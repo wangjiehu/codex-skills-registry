@@ -3,8 +3,10 @@
 [![Validate](https://github.com/Hephaestus-DevKit/codex-skills-registry/actions/workflows/validate.yml/badge.svg)](https://github.com/Hephaestus-DevKit/codex-skills-registry/actions/workflows/validate.yml)
 [![CodeQL](https://github.com/Hephaestus-DevKit/codex-skills-registry/actions/workflows/codeql.yml/badge.svg)](https://github.com/Hephaestus-DevKit/codex-skills-registry/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://github.com/Hephaestus-DevKit/codex-skills-registry/actions/workflows/scorecard.yml/badge.svg)](https://github.com/Hephaestus-DevKit/codex-skills-registry/actions/workflows/scorecard.yml)
-[![npm](https://img.shields.io/npm/v/%40wangjiehu%2Fcodex-skills-registry.svg)](https://www.npmjs.com/package/@hepheastus-devkit/codex-skills-registry)
+[![npm](https://img.shields.io/npm/v/%40hepheastus-devkit%2Fcodex-skills-registry.svg)](https://www.npmjs.com/package/@hepheastus-devkit/codex-skills-registry)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+**Live registry site:** [hephaestus-devkit.github.io/codex-skills-registry](https://hephaestus-devkit.github.io/codex-skills-registry/)
 
 Validate, index, audit, and safely test Codex Skills, plugin manifests, MCP
 server configuration, and GitHub Actions workflows before they become trusted
