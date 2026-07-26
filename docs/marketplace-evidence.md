@@ -4,8 +4,8 @@ This file records copied release-readiness evidence for the public package and
 GitHub Action listing. It is intentionally text-based so maintainers can review
 it in Git, without relying on screenshots that go stale quickly.
 
-Refreshed on 2026-07-03 after the repository migration to
-`Hephaestus-DevKit/codex-skills-registry`.
+Refreshed on 2026-07-26 after the 1.0.6 npm package migration to
+`@hepheastus-devkit/codex-skills-registry`.
 
 ## Local Gates
 
@@ -13,7 +13,7 @@ Refreshed on 2026-07-03 after the repository migration to
 
 ```text
 18 test files passed
-103 tests passed
+114 tests passed
 npm pack --dry-run completed
 npm audit --audit-level=moderate found 0 vulnerabilities
 ```
@@ -30,7 +30,7 @@ npx codex-skills --help
 Result:
 
 ```text
-1.0.4
+1.0.6
 Usage: codex-skills [options] [command]
 
 Validate, index, and mock-run Codex Skills, plugins, MCP configs, and workflow
@@ -75,45 +75,35 @@ Suppressed: 0
 Baseline: 0
 ```
 
-## npm Provenance Evidence
+## npm Registry Evidence
 
-The published `1.0.4` package includes npm provenance metadata. The release
-workflow published through Trusted Publishing/OIDC after verifying that the
-release tag matched the package version and attesting the packed tarball.
+The package publishes as `@hepheastus-devkit/codex-skills-registry` and the
+release workflow publishes through Trusted Publishing/OIDC after verifying that
+the release tag matches the package version and attesting the packed tarball.
 
-Copied `npm view @wangjiehu/codex-skills-registry@1.0.4 dist --json` fields:
+Copied `npm view @hepheastus-devkit/codex-skills-registry version` and
+`npm view @hepheastus-devkit/codex-skills-registry dist --json` fields:
 
 ```json
+1.0.6
 {
-  "attestations": {
-    "url": "https://registry.npmjs.org/-/npm/v1/attestations/@wangjiehu%2fcodex-skills-registry@1.0.4",
-    "provenance": {
-      "predicateType": "https://slsa.dev/provenance/v1"
-    }
-  }
+  "tarball": "https://registry.npmjs.org/@hepheastus-devkit/codex-skills-registry/-/codex-skills-registry-1.0.6.tgz",
+  "fileCount": 116,
+  "unpackedSize": 537810
 }
 ```
 
-## v1.0.5 Release Blocker
+Earlier releases up to `1.0.4` were published under the retired
+`@wangjiehu/codex-skills-registry` scope with the same provenance flow.
 
-The `v1.0.5` tag points at the merged `1.0.5` release commit, and the release
-workflow passed validation, packaging, and provenance attestation. The run then
-failed at `npm publish` with an npm not-found or permission response for
-`@wangjiehu/codex-skills-registry@1.0.5`:
+## v1.0.5 Release Blocker (resolved)
+
+The `v1.0.5` release run passed validation, packaging, and provenance
+attestation, then failed at `npm publish` with an npm not-found or permission
+response for the old `@wangjiehu/codex-skills-registry` scope:
 
 https://github.com/Hephaestus-DevKit/codex-skills-registry/actions/runs/28357920802
 
-Current registry state:
-
-```text
-npm view @wangjiehu/codex-skills-registry version
-1.0.4
-
-npm view @wangjiehu/codex-skills-registry@1.0.5 version
-E404 No match found for version 1.0.5
-```
-
-Because the GitHub repository moved to
-`Hephaestus-DevKit/codex-skills-registry`, the next owner action is to update
-the npm package's Trusted Publisher settings for that repository and
-`.github/workflows/release.yml`, then rerun the failed workflow.
+The blocker was resolved in the `1.0.6` release by migrating the package to the
+`@hepheastus-devkit/codex-skills-registry` organization scope, which published
+successfully; `1.0.5` remains unpublished on npm by design.

@@ -43,7 +43,7 @@ inputs:
     required: false
     default: text
   strict:
-    description: Enable strict audit behavior for doctor or audit.
+    description: Enable strict audit behavior for doctor, audit, pr-comment, or baseline.
     required: false
     default: "false"
   schema:

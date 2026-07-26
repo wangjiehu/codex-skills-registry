@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Update SHA-pinned `actions/setup-node` and `github/codeql-action` workflow
+  dependencies and in-range npm dependencies.
+- Fix stale `@wangjiehu` npm scope references in docs, demo templates, and the
+  security policy after the 1.0.6 package rename.
+- Pin README and demo Action examples to the v1.0.6 release SHA.
+
+## 1.0.6 - 2026-07-03
+
+- Migrate the npm package name to `@hepheastus-devkit/codex-skills-registry`
+  so releases publish under the organization scope.
 - Keep npm Trusted Publishing recovery guidance aligned with the
   `Hephaestus-DevKit/codex-skills-registry` repository.
 - Make Pages publishing use a generated `gh-pages` branch so documentation

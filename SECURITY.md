@@ -15,7 +15,7 @@ Security fixes target the latest released minor version.
 ## Reporting a vulnerability
 
 Please open a
-[private GitHub security advisory](https://github.com/wangjiehu/codex-skills-registry/security/advisories/new).
+[private GitHub security advisory](https://github.com/Hephaestus-DevKit/codex-skills-registry/security/advisories/new).
 Do not open a public issue for an undisclosed vulnerability.
 
 Include:

@@ -69,7 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: Hephaestus-DevKit/codex-skills-registry@e68aba5aead57f18b51ddb1b0b47294ef6eea8e7 # v1.0.4
+      - uses: Hephaestus-DevKit/codex-skills-registry@a570c065e61ffdb35dab87fd01084015a02a746d # v1.0.6
         with:
           path: .
           command: doctor
@@ -77,7 +77,7 @@ jobs:
           format: text
 ```
 
-The example uses the verified v1.0.4 release commit. Review and update pinned
+The example uses the verified v1.0.6 release commit. Review and update pinned
 SHAs intentionally when adopting a newer release.
 
 Set `output-directory` when `path` points at an untrusted checkout so generated
@@ -212,7 +212,7 @@ SARIF upload pattern:
 
 ```yaml
 - id: codex-skills
-  uses: Hephaestus-DevKit/codex-skills-registry@e68aba5aead57f18b51ddb1b0b47294ef6eea8e7 # v1.0.4
+  uses: Hephaestus-DevKit/codex-skills-registry@a570c065e61ffdb35dab87fd01084015a02a746d # v1.0.6
   continue-on-error: true
   with:
     path: .
@@ -237,7 +237,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-  - uses: Hephaestus-DevKit/codex-skills-registry@e68aba5aead57f18b51ddb1b0b47294ef6eea8e7 # v1.0.4
+  - uses: Hephaestus-DevKit/codex-skills-registry@a570c065e61ffdb35dab87fd01084015a02a746d # v1.0.6
     with:
       path: .
       command: pr-comment

@@ -1,7 +1,7 @@
 # codex-skills-registry standalone demo
 
 This directory is a copy-ready demo repository template for
-`@wangjiehu/codex-skills-registry`.
+`@hepheastus-devkit/codex-skills-registry`.
 
 It demonstrates the product's clean path, baseline-ready configuration, SARIF
 upload, static site artifact, and same-repository pull request comments in
@@ -20,9 +20,9 @@ node dist/cli.js --cwd demo/standalone-project --no-examples site --out demo/sta
 From a copied standalone repository:
 
 ```bash
-npx @wangjiehu/codex-skills-registry@latest doctor
-npx @wangjiehu/codex-skills-registry@latest audit --strict
-npx @wangjiehu/codex-skills-registry@latest site --out site
+npx @hepheastus-devkit/codex-skills-registry@latest doctor
+npx @hepheastus-devkit/codex-skills-registry@latest audit --strict
+npx @hepheastus-devkit/codex-skills-registry@latest site --out site
 ```
 
 ## Running this demo in GitHub

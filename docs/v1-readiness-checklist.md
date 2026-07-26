@@ -37,7 +37,6 @@
 - [x] GitHub Action has Marketplace branding.
 - [x] README includes quick start, policy, schema, report, SARIF, and demo workflows.
 - [x] Security model describes threat coverage and out-of-scope behavior.
-- [x] Go-to-market plan is documented.
 - [x] GitHub Pages docs site generation is available through `codex-skills site` and the Pages workflow.
 - [x] PR comment auto-publishing is available through `post-comment: "true"` with narrow `pull-requests: write` permissions.
 - [x] Copied release, PR comment, npm provenance, and CI evidence is captured in `docs/marketplace-evidence.md`.

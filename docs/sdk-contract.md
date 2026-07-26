@@ -1,6 +1,6 @@
 # SDK Contract
 
-`@wangjiehu/codex-skills-registry` exposes a small SDK for repository
+`@hepheastus-devkit/codex-skills-registry` exposes a small SDK for repository
 automation, CI integrations, and documentation generators.
 
 ## Recommended Public Surface
@@ -33,5 +33,5 @@ they are implementation helpers and may be narrowed in the next major version.
 - Patch releases should not remove exports or change CLI/Action defaults.
 - Minor releases may add commands, options, rules, report fields, or stricter
   tests, but should preserve existing adoption paths.
-- A `1.0.0` release should first freeze the recommended public surface above
-  and document any removed compatibility exports in the changelog.
+- As of the `1.0.0` release, the recommended public surface above is frozen;
+  any removed compatibility exports must be documented in the changelog.
