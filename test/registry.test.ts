@@ -134,6 +134,26 @@ describe("SkillsRegistry", () => {
     }
   });
 
+  it("reports a diagnostic instead of crashing on an empty skill config file", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "codex-registry-empty-config-"));
+
+    try {
+      await writeFile(path.join(root, "skills.yaml"), "", "utf8");
+
+      const registry = await SkillsRegistry.load({
+        cwd: root,
+        includeExamples: false,
+        configFile: "skills.yaml",
+      });
+
+      expect(
+        registry.listDiagnostics().some((issue) => issue.code === "CONFIG_SKILLS_MISSING"),
+      ).toBe(true);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("rejects config files that resolve outside the project", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "codex-registry-config-symlink-"));
     const outside = await mkdtemp(path.join(tmpdir(), "codex-registry-config-outside-"));

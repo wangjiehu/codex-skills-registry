@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { escapeHtml } from "./utils.js";
 /**
  * Writes a static documentation site for GitHub Pages or generic artifact hosting.
  *
@@ -127,7 +128,7 @@ function formatRules(rules) {
     <select id="rules-category">
       <option value="">All categories</option>
       ${categories
-        .map((category) => `<option value="${escapeAttributeValue(category)}">${escapeHtml(category)}</option>`)
+        .map((category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`)
         .join("")}
     </select>
   </div>
@@ -136,7 +137,7 @@ function formatRules(rules) {
 <section class="rules" id="rules-list">
   ${rules
         .map((rule) => `
-    <article class="rule" id="${escapeAttribute(rule.code)}" data-rule-card data-category="${escapeAttributeValue(ruleCategory(rule.code))}" data-rule-text="${escapeAttributeValue(ruleSearchText(rule))}">
+    <article class="rule" id="${escapeAttribute(rule.code)}" data-rule-card data-category="${escapeHtml(ruleCategory(rule.code))}" data-rule-text="${escapeHtml(ruleSearchText(rule))}">
       <h2><code>${escapeHtml(rule.code)}</code> ${escapeHtml(rule.title)}</h2>
       <p>${escapeHtml(rule.description)}</p>
       <p><strong>Fix:</strong> ${escapeHtml(rule.remediation)}</p>
@@ -308,18 +309,8 @@ function formatList(values, empty) {
 function navLink(label, href, active) {
     return `<a href="${href}"${active ? ' aria-current="page"' : ""}>${label}</a>`;
 }
-function escapeHtml(value) {
-    return value
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-}
 function escapeAttribute(value) {
     return escapeHtml(value).replace(/[^A-Za-z0-9_-]/g, "-");
-}
-function escapeAttributeValue(value) {
-    return escapeHtml(value);
 }
 function ruleCategory(code) {
     return code.split("_")[0] ?? "REGISTRY";

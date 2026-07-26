@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { RegistryReport } from "./report.js";
 import type { RegistryRuleExplanation } from "./rules.js";
+import { escapeHtml } from "./utils.js";
 
 export interface RegistrySiteInput {
   report: RegistryReport;
@@ -170,8 +171,7 @@ function formatRules(rules: RegistryRuleExplanation[]): string {
       <option value="">All categories</option>
       ${categories
         .map(
-          (category) =>
-            `<option value="${escapeAttributeValue(category)}">${escapeHtml(category)}</option>`,
+          (category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`,
         )
         .join("")}
     </select>
@@ -182,7 +182,7 @@ function formatRules(rules: RegistryRuleExplanation[]): string {
   ${rules
     .map(
       (rule) => `
-    <article class="rule" id="${escapeAttribute(rule.code)}" data-rule-card data-category="${escapeAttributeValue(ruleCategory(rule.code))}" data-rule-text="${escapeAttributeValue(ruleSearchText(rule))}">
+    <article class="rule" id="${escapeAttribute(rule.code)}" data-rule-card data-category="${escapeHtml(ruleCategory(rule.code))}" data-rule-text="${escapeHtml(ruleSearchText(rule))}">
       <h2><code>${escapeHtml(rule.code)}</code> ${escapeHtml(rule.title)}</h2>
       <p>${escapeHtml(rule.description)}</p>
       <p><strong>Fix:</strong> ${escapeHtml(rule.remediation)}</p>
@@ -380,20 +380,8 @@ function navLink(label: string, href: string, active: boolean): string {
   return `<a href="${href}"${active ? ' aria-current="page"' : ""}>${label}</a>`;
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 function escapeAttribute(value: string): string {
   return escapeHtml(value).replace(/[^A-Za-z0-9_-]/g, "-");
-}
-
-function escapeAttributeValue(value: string): string {
-  return escapeHtml(value);
 }
 
 function ruleCategory(code: string): string {

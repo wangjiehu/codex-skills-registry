@@ -2,7 +2,6 @@
 import { readFileSync } from "node:fs";
 import { access, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { Command, Option } from "commander";
 import { loadIssueBaselineFile } from "./baseline.js";
 import { filterIssuesByChangedFiles, loadChangedFiles } from "./changed-files.js";
@@ -17,8 +16,9 @@ import { createRegistryReport, formatRegistryReportHtml, formatRegistryReportMar
 import { SkillsRegistry, formatValidationIssues } from "./registry.js";
 import { explainRegistryRule, listRegistryRules } from "./rules.js";
 import { createSarifLog } from "./sarif.js";
-import { TriggerTypeSchema } from "./schema.js";
+import { TriggerTypeSchema, } from "./schema.js";
 import { writeRegistrySite } from "./site.js";
+import { isMainModule } from "./utils.js";
 const { version: VERSION } = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const DEFAULT_OUTPUT_OPTIONS = {
     format: "text",
@@ -115,7 +115,8 @@ export async function runCli(argv = process.argv) {
         .description("export registry index as JSON")
         .option("-o, --out <file>", "output file; prints to stdout when omitted")
         .action(async (options, command) => {
-        await handleExport(toLoadOptions(command.parent?.opts() ?? {}), options.out);
+        const parentOptions = command.parent?.opts() ?? {};
+        await handleExport(toLoadOptions(parentOptions), options.out, toOutputOptions(parentOptions));
     });
     program
         .command("report")
@@ -151,7 +152,8 @@ export async function runCli(argv = process.argv) {
         .option("-o, --out <file>", "output file", "codex-skills-baseline.json")
         .option("--strict", "include strict audit findings in the baseline")
         .action(async (options, command) => {
-        await handleBaseline(toLoadOptions(command.parent?.opts() ?? {}), options);
+        const parentOptions = command.parent?.opts() ?? {};
+        await handleBaseline(toLoadOptions(parentOptions), options, toOutputOptions(parentOptions));
     });
     program
         .command("explain")
@@ -170,10 +172,11 @@ export async function runCli(argv = process.argv) {
         if (schema && options.schema && schema !== options.schema) {
             throw new Error("Use either the schema argument or --schema; both values must not differ.");
         }
-        await handleSchema(toLoadOptions(command.parent?.opts() ?? {}), {
+        const parentOptions = command.parent?.opts() ?? {};
+        await handleSchema(toLoadOptions(parentOptions), {
             out: options.out,
             schema: schema ?? options.schema,
-        });
+        }, toOutputOptions(parentOptions));
     });
     program
         .command("init-policy")
@@ -182,11 +185,13 @@ export async function runCli(argv = process.argv) {
         .option("-o, --out <file>", "output file; prints to stdout when omitted")
         .option("--force", "overwrite an existing output file")
         .action(async (options, command) => {
-        await handleInitPolicy(toLoadOptions(command.parent?.opts() ?? {}), options);
+        const parentOptions = command.parent?.opts() ?? {};
+        await handleInitPolicy(toLoadOptions(parentOptions), options, toOutputOptions(parentOptions));
     });
     await program.parseAsync(argv);
 }
 async function handleList(options, outputOptions = DEFAULT_OUTPUT_OPTIONS) {
+    rejectSarifFor("list", outputOptions);
     const registry = await SkillsRegistry.load(options);
     const filterContext = await createCliIssueFilterContext(options, registry);
     const diagnostics = filterCliIssues(registry.listDiagnostics(), options, registry, filterContext);
@@ -199,7 +204,6 @@ async function handleList(options, outputOptions = DEFAULT_OUTPUT_OPTIONS) {
         });
         return;
     }
-    rejectSarifFor("list", outputOptions);
     console.log(registry.formatSkillsTable());
 }
 async function handleValidate(name, options, outputOptions = DEFAULT_OUTPUT_OPTIONS) {
@@ -212,16 +216,23 @@ async function handleValidate(name, options, outputOptions = DEFAULT_OUTPUT_OPTI
             ...result,
         }));
         const diagnostics = filterCliIssues(registry.listDiagnostics(), options, registry, filterContext);
-        const validationFilter = filterCliIssues(resultList.flatMap((result) => result.issues), options, registry, filterContext);
+        // Filters are per-issue, so filtering once per result and concatenating is
+        // equivalent to filtering the flattened union.
+        const filteredResults = resultList.map((result) => ({
+            result,
+            filter: filterCliIssues(result.issues, options, registry, filterContext),
+        }));
+        const validationFilter = {
+            activeIssues: filteredResults.flatMap((entry) => entry.filter.activeIssues),
+            suppressedIssues: filteredResults.flatMap((entry) => entry.filter.suppressedIssues),
+            baselineIssues: filteredResults.flatMap((entry) => entry.filter.baselineIssues),
+        };
         const issues = validationFilter.activeIssues;
-        const filteredResultList = resultList.map((result) => {
-            const resultIssues = filterCliIssues(result.issues, options, registry, filterContext).activeIssues;
-            return {
-                ...result,
-                valid: resultIssues.every((issue) => issue.severity !== "error"),
-                issues: resultIssues,
-            };
-        });
+        const filteredResultList = filteredResults.map(({ result, filter }) => ({
+            ...result,
+            valid: filter.activeIssues.every((issue) => issue.severity !== "error"),
+            issues: filter.activeIssues,
+        }));
         const allIssues = [
             ...filterContext.baselineDiagnostics,
             ...diagnostics.activeIssues,
@@ -317,27 +328,33 @@ async function handleValidate(name, options, outputOptions = DEFAULT_OUTPUT_OPTI
     }
 }
 async function handleRun(name, options, executionOptions = {}, outputOptions = DEFAULT_OUTPUT_OPTIONS) {
+    rejectSarifFor("run", outputOptions);
     const registry = await SkillsRegistry.load(options);
     const result = await executeMockSkill(registry, name, executionOptions);
     if (outputOptions.format === "json") {
         writeJson(result);
         return;
     }
-    rejectSarifFor("run", outputOptions);
     console.log(result.logs.join("\n"));
 }
 async function handleDoctor(options, doctorOptions = {}, outputOptions = DEFAULT_OUTPUT_OPTIONS) {
     const registry = await SkillsRegistry.load(options);
     const filterContext = await createCliIssueFilterContext(options, registry);
     const validationResults = await registry.validateAllSkills();
-    const rawValidationIssues = [...validationResults.entries()].flatMap(([skillName, result]) => result.issues.map((issue) => ({
-        ...issue,
-        path: issue.path === skillName ? issue.path : `${skillName}.${issue.path}`,
-    })));
-    const invalid = [...validationResults.values()].filter((result) => !result.valid);
     const diagnostics = filterCliIssues(registry.listDiagnostics(), options, registry, filterContext);
     const auditFilter = filterCliIssues(registry.audit({ strict: doctorOptions.strict }), options, registry, filterContext);
-    const validationFilter = filterCliIssues(rawValidationIssues, options, registry, filterContext);
+    // Filter per skill so the invalid count agrees with the reported issues even
+    // when a baseline or suppression covers a skill's only errors.
+    const skillFilters = [...validationResults.entries()].map(([skillName, result]) => ({
+        skillName,
+        filter: filterCliIssues(prefixSkillIssuePaths(skillName, result), options, registry, filterContext),
+    }));
+    const validationFilter = {
+        activeIssues: skillFilters.flatMap((entry) => entry.filter.activeIssues),
+        suppressedIssues: skillFilters.flatMap((entry) => entry.filter.suppressedIssues),
+        baselineIssues: skillFilters.flatMap((entry) => entry.filter.baselineIssues),
+    };
+    const invalidSkillCount = skillFilters.filter((entry) => entry.filter.activeIssues.some((issue) => issue.severity === "error")).length;
     const auditIssues = auditFilter.activeIssues;
     const validationIssues = validationFilter.activeIssues;
     const allIssues = [
@@ -349,7 +366,7 @@ async function handleDoctor(options, doctorOptions = {}, outputOptions = DEFAULT
     const report = {
         summary: {
             skills: registry.listSkills().length,
-            invalidSkills: invalid.length,
+            invalidSkills: invalidSkillCount,
             mcpServers: registry.listMcpServers().length,
             plugins: registry.listPlugins().length,
             workflows: registry.listWorkflows().length,
@@ -472,7 +489,8 @@ async function handleAudit(options, auditOptions = {}, outputOptions = DEFAULT_O
         process.exitCode = 1;
     }
 }
-async function handleExport(options, outFile) {
+async function handleExport(options, outFile, outputOptions = DEFAULT_OUTPUT_OPTIONS) {
+    rejectSarifFor("export", outputOptions);
     const registry = await SkillsRegistry.load(options);
     const json = `${JSON.stringify(registry.toIndex({ relativePaths: true }), null, 2)}\n`;
     if (!outFile) {
@@ -512,10 +530,7 @@ async function handlePrComment(options, commentOptions, outputOptions = DEFAULT_
     const filterContext = await createCliIssueFilterContext(options, registry);
     const index = registry.toIndex({ relativePaths: true });
     const validationResults = await registry.validateAllSkills();
-    const rawValidationIssues = [...validationResults.entries()].flatMap(([skillName, result]) => result.issues.map((issue) => ({
-        ...issue,
-        path: issue.path === skillName ? issue.path : `${skillName}.${issue.path}`,
-    })));
+    const rawValidationIssues = [...validationResults.entries()].flatMap(([skillName, result]) => prefixSkillIssuePaths(skillName, result));
     const filteredDiagnostics = filterCliIssues(registry.listDiagnostics(), options, registry, filterContext);
     const validationFilter = filterCliIssues(rawValidationIssues, options, registry, filterContext);
     const auditFilter = filterCliIssues(registry.audit({ strict: commentOptions.strict }), options, registry, filterContext);
@@ -588,13 +603,11 @@ async function handleSite(options, siteOptions, outputOptions = DEFAULT_OUTPUT_O
     }
     console.log(`Wrote registry site to ${manifest.outDir}`);
 }
-async function handleBaseline(options, baselineOptions) {
+async function handleBaseline(options, baselineOptions, outputOptions = DEFAULT_OUTPUT_OPTIONS) {
+    rejectSarifFor("baseline", outputOptions);
     const registry = await SkillsRegistry.load(options);
     const validationResults = await registry.validateAllSkills();
-    const validationIssues = [...validationResults.entries()].flatMap(([skillName, result]) => result.issues.map((issue) => ({
-        ...issue,
-        path: issue.path === skillName ? issue.path : `${skillName}.${issue.path}`,
-    })));
+    const validationIssues = [...validationResults.entries()].flatMap(([skillName, result]) => prefixSkillIssuePaths(skillName, result));
     const rawIssues = [
         ...registry.listDiagnostics(),
         ...validationIssues,
@@ -610,7 +623,8 @@ async function handleBaseline(options, baselineOptions) {
     await writeFile(outputPath, `${JSON.stringify(baseline, null, 2)}\n`, "utf8");
     console.log(`Wrote ${baseline.issues.length} baseline finding(s) to ${outputPath}`);
 }
-async function handleSchema(options, schemaOptions) {
+async function handleSchema(options, schemaOptions, outputOptions = DEFAULT_OUTPUT_OPTIONS) {
+    rejectSarifFor("schema", outputOptions);
     const schema = schemaOptions.schema
         ? createNamedJsonSchema(schemaOptions.schema)
         : createRegistryJsonSchemaCatalog();
@@ -623,7 +637,8 @@ async function handleSchema(options, schemaOptions) {
     await writeFile(outputPath, json, "utf8");
     console.log(`Exported JSON Schema to ${outputPath}`);
 }
-async function handleInitPolicy(options, policyOptions) {
+async function handleInitPolicy(options, policyOptions, outputOptions = DEFAULT_OUTPUT_OPTIONS) {
+    rejectSarifFor("init-policy", outputOptions);
     const preset = parsePolicyPreset(policyOptions.preset);
     const yaml = formatRegistryPolicyYaml({
         extends: [preset],
@@ -791,6 +806,12 @@ function filterCliIssues(issues, options, registry, context) {
         baseline: context.baseline,
     });
 }
+function prefixSkillIssuePaths(skillName, result) {
+    return result.issues.map((issue) => ({
+        ...issue,
+        path: issue.path === skillName ? issue.path : `${skillName}.${issue.path}`,
+    }));
+}
 function parsePositiveInt(value, label) {
     const parsed = Number(value);
     if (!Number.isInteger(parsed) || parsed <= 0) {
@@ -804,8 +825,7 @@ function parseOptionalTrigger(value) {
     }
     return TriggerTypeSchema.parse(value);
 }
-const currentFile = fileURLToPath(import.meta.url);
-if (process.argv[1] && path.resolve(process.argv[1]) === currentFile) {
+if (isMainModule(import.meta.url)) {
     runCli().catch((error) => {
         console.error(error instanceof Error ? error.message : String(error));
         process.exitCode = 1;

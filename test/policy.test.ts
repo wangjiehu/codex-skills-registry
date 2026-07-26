@@ -86,6 +86,31 @@ describe("policy", () => {
     expect(policy.failOnWarnings).toBe(true);
   });
 
+  it("keeps stricter preset settings when combining presets", () => {
+    const policy = resolveRegistryPolicy({
+      extends: ["strict-mcp", "recommended"],
+    });
+
+    expect(policy.failOnWarnings).toBe(true);
+    expect(policy.requirePluginSkillPaths).toBe(true);
+    expect(policy.allowedMcpCommands).toEqual(["node", "python", "uvx"]);
+  });
+
+  it("treats an empty policy file as the default policy", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "codex-policy-empty-"));
+
+    try {
+      await writeFile(path.join(root, ".codex-skills-registry.yaml"), "# comments only\n", "utf8");
+
+      const loaded = await loadRegistryPolicy(root);
+
+      expect(loaded.diagnostics).toHaveLength(0);
+      expect(loaded.policy.failOnWarnings).toBe(false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("resolves supply-chain strict preset", () => {
     const policy = resolveRegistryPolicy({
       extends: ["strict-supply-chain"],

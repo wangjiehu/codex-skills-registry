@@ -2,7 +2,12 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import type { RegistryPolicy } from "./policy.js";
 import type { ValidationIssue } from "./schema.js";
-import { escapeRegExp, normalizeRepoPath, relativePathInside } from "./utils.js";
+import {
+  escapeRegExp,
+  normalizeRepoPath,
+  relativePathInside,
+  stripWindowsDrivePrefix,
+} from "./utils.js";
 
 export interface IssueBaselineEntry {
   fingerprint: string;
@@ -231,25 +236,7 @@ function slugifyIssueCode(value: string): string {
   return result.join("").slice(0, 80) || "ISSUE";
 }
 
-function stripWindowsDrivePrefix(value: string): string {
-  if (
-    value.length >= 3 &&
-    isAsciiLetter(value[0] ?? "") &&
-    value[1] === ":" &&
-    (value[2] === "\\" || value[2] === "/")
-  ) {
-    return value.slice(3);
-  }
-
-  return value;
-}
-
 function isAsciiAlphaNumeric(char: string): boolean {
   const code = char.charCodeAt(0);
   return (code >= 48 && code <= 57) || (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
-}
-
-function isAsciiLetter(char: string): boolean {
-  const code = char.charCodeAt(0);
-  return (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
 }

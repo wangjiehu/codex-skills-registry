@@ -4,7 +4,6 @@ import { ZodError } from "zod";
 import { parse as parseToml } from "smol-toml";
 import { parse as parseYaml } from "yaml";
 import {
-  CodexSkillSchema,
   McpConfigFileSchema,
   McpServerConfigSchema,
   PluginManifestSchema,
@@ -99,13 +98,14 @@ export async function discoverProject(options: DiscoverOptions = {}): Promise<Di
   }
 
   const disabledSkills = await discoverDisabledSkillNames(unique(mcpConfigPaths));
+  const exampleSkillRoot = path.normalize(path.join(cwd, "examples", ".agents", "skills"));
 
   for (const root of unique(skillRoots)) {
     mergeResult(
       result,
       await discoverSkillsFromRoot(
         root,
-        root.includes(`${path.sep}examples${path.sep}`) ? "example" : "project",
+        root === exampleSkillRoot ? "example" : "project",
         disabledSkills,
       ),
     );
@@ -235,31 +235,22 @@ export async function loadSkillFromDirectory(
     );
     const entryPoint = await detectEntryPoint(skillDir, parsed.frontmatter);
 
-    const normalized = normalizeSkillInput(parsed.frontmatter, {
-      rootDir: skillDir,
-      skillFile,
-      source,
-      triggers: defaultTriggers,
-      entryPoint,
-      metadata: {
-        body: parsed.body,
-        agent: agentMetadata,
-        sourceLines,
-      },
-    });
-
-    const validation = CodexSkillSchema.safeParse(normalized);
-    if (!validation.success) {
-      result.diagnostics.push(
-        ...zodErrorToIssues(validation.error, skillFile).map((issue) => ({
-          ...issue,
-          file: skillFile,
-        })),
-      );
-      return result;
-    }
-
-    result.skills.push(validation.data);
+    // normalizeSkillInput already validates against CodexSkillSchema and
+    // throws ZodError on failure, which the catch below reports with line hints.
+    result.skills.push(
+      normalizeSkillInput(parsed.frontmatter, {
+        rootDir: skillDir,
+        skillFile,
+        source,
+        triggers: defaultTriggers,
+        entryPoint,
+        metadata: {
+          body: parsed.body,
+          agent: agentMetadata,
+          sourceLines,
+        },
+      }),
+    );
   } catch (error) {
     if (error instanceof ZodError) {
       result.diagnostics.push(
@@ -492,8 +483,8 @@ export async function discoverPluginMcpServers(
       name,
       config: validation.data,
       sourcePath: manifestPath,
-      line: manifestLines ? findJsonPropertyLine(manifestLines, name) : undefined,
-      fieldLines: manifestLines ? findJsonNestedFieldLines(manifestLines, name) : undefined,
+      line: manifestLines ? findJsonPropertyLine(manifestLines, name, [2]) : undefined,
+      fieldLines: manifestLines ? findJsonNestedFieldLines(manifestLines, name, [2]) : undefined,
     });
   }
 
@@ -547,8 +538,15 @@ export async function discoverPluginMcpServers(
     }
 
     const parsedRecord = parsed as Record<string, unknown>;
-    const wrapped =
-      "mcp_servers" in parsedRecord ? McpConfigFileSchema.safeParse(parsed) : undefined;
+    // Accept both the Codex mcp_servers wrapper and the camelCase mcpServers
+    // wrapper used by plugin manifests and .mcp.json conventions.
+    const wrapperInput =
+      "mcp_servers" in parsedRecord
+        ? parsed
+        : "mcpServers" in parsedRecord
+          ? { mcp_servers: parsedRecord.mcpServers }
+          : undefined;
+    const wrapped = wrapperInput ? McpConfigFileSchema.safeParse(wrapperInput) : undefined;
     if (wrapped && !wrapped.success) {
       result.diagnostics.push(
         ...zodErrorToIssues(wrapped.error, mcpPath).map((issue) => ({
@@ -577,8 +575,8 @@ export async function discoverPluginMcpServers(
         name,
         config: validation.data,
         sourcePath: mcpPath,
-        line: findJsonPropertyLine(mcpLines, name),
-        fieldLines: findJsonNestedFieldLines(mcpLines, name),
+        line: findJsonPropertyLine(mcpLines, name, wrapped ? [2] : [1]),
+        fieldLines: findJsonNestedFieldLines(mcpLines, name, wrapped ? [2] : [1]),
       });
     }
   } catch (error) {
@@ -805,37 +803,70 @@ function findTomlMcpServerHeader(
   return index >= 0 ? { index, line: index + 1 } : undefined;
 }
 
-function findJsonPropertyLine(lines: string[], key: string): number | undefined {
-  const propertyPattern = new RegExp(`"${escapeRegExp(key)}"\\s*:`);
-  const index = lines.findIndex((line) => propertyPattern.test(line));
-  return index >= 0 ? index + 1 : undefined;
+/**
+ * Finds the 1-based line of a pretty-printed JSON key, matching only at the
+ * given brace depths so a nested field (for example env.beta) is never
+ * mistaken for a top-level server named beta. Falls back to the first textual
+ * occurrence for single-line or unusually formatted JSON.
+ */
+function findJsonPropertyLine(lines: string[], key: string, depths: number[]): number | undefined {
+  const match = findJsonKeyAtDepth(lines, key, depths);
+  if (match) {
+    return match.index + 1;
+  }
+
+  const loosePattern = new RegExp(`"${escapeRegExp(key)}"\\s*:`);
+  const fallback = lines.findIndex((line) => loosePattern.test(line));
+  return fallback >= 0 ? fallback + 1 : undefined;
 }
 
-function findJsonNestedFieldLines(lines: string[], objectKey: string): Record<string, number> {
-  const startIndex = lines.findIndex((line) =>
-    new RegExp(`"${escapeRegExp(objectKey)}"\\s*:`).test(line),
-  );
+function findJsonNestedFieldLines(
+  lines: string[],
+  objectKey: string,
+  depths: number[],
+): Record<string, number> {
   const fieldLines: Record<string, number> = {};
-
-  if (startIndex < 0) {
+  const start = findJsonKeyAtDepth(lines, objectKey, depths);
+  if (!start) {
     return fieldLines;
   }
 
-  let depth = 0;
-  for (let index = startIndex; index < lines.length; index += 1) {
+  let depth = start.depth;
+  for (let index = start.index; index < lines.length; index += 1) {
     const line = lines[index] ?? "";
-    if (depth > 0) {
-      const match = line.match(/^\s*"([^"]+)"\s*:/);
-      if (match?.[1] && match[1] !== objectKey) {
-        fieldLines[match[1]] = index + 1;
+    if (index > start.index) {
+      if (depth <= start.depth) {
+        break;
+      }
+      if (depth === start.depth + 1) {
+        const fieldMatch = line.match(/^\s*"([^"]+)"\s*:/);
+        if (fieldMatch?.[1]) {
+          fieldLines[fieldMatch[1]] = index + 1;
+        }
       }
     }
 
     depth += countChar(line, "{") - countChar(line, "}");
-    if (index > startIndex && depth <= 0) {
-      break;
-    }
   }
 
   return fieldLines;
+}
+
+function findJsonKeyAtDepth(
+  lines: string[],
+  key: string,
+  depths: number[],
+): { index: number; depth: number } | undefined {
+  const anchoredPattern = new RegExp(`^\\s*"${escapeRegExp(key)}"\\s*:`);
+  let depth = 0;
+
+  for (const [index, line] of lines.entries()) {
+    if (depths.includes(depth) && anchoredPattern.test(line)) {
+      return { index, depth };
+    }
+
+    depth += countChar(line, "{") - countChar(line, "}");
+  }
+
+  return undefined;
 }

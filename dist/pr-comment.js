@@ -1,4 +1,5 @@
 import { issueCode } from "./issues.js";
+import { escapeMarkdownText, markdownCodeSpan as codeSpan } from "./utils.js";
 export function formatPullRequestComment(report, options = {}) {
     const maxFindings = options.maxFindings ?? 10;
     const status = report.summary.errors > 0
@@ -67,14 +68,5 @@ function formatArtifacts(options) {
         rows.push(`- SARIF: ${escapeMarkdownText(options.sarifPath)}`);
     }
     return rows.length > 0 ? rows : ["No artifact paths were provided."];
-}
-function escapeMarkdownText(value) {
-    return value
-        .replace(/\\/g, "\\\\")
-        .replace(/([*_`[\]()#+!|<>])/g, "\\$1")
-        .replace(/@/g, "&#64;");
-}
-function codeSpan(value) {
-    return value.includes("`") ? `\`\` ${value} \`\`` : `\`${value}\``;
 }
 //# sourceMappingURL=pr-comment.js.map

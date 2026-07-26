@@ -135,6 +135,46 @@ description: Validate a skill file that was saved with a byte order mark.
     ]);
   });
 
+  it("unwraps camelCase mcpServers wrapper files referenced by plugins", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "codex-plugin-mcp-camel-"));
+    const mcpPath = path.join(root, "mcp.json");
+
+    try {
+      await writeFile(
+        mcpPath,
+        JSON.stringify(
+          {
+            mcpServers: {
+              docs: {
+                command: "node",
+              },
+            },
+          },
+          null,
+          2,
+        ),
+        "utf8",
+      );
+
+      const result = await discoverPluginMcpServers(
+        root,
+        {
+          name: "camel-mcp-plugin",
+          version: "0.1.0",
+          mcpServers: "./mcp.json",
+          mcp_servers: {},
+        },
+        "plugin.json",
+      );
+
+      expect(result.diagnostics).toHaveLength(0);
+      expect(result.mcpServers.map((server) => server.name)).toEqual(["docs"]);
+      expect(result.mcpServers[0]?.fieldLines?.command).toBe(4);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("reports malformed wrapped plugin MCP config files", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "codex-plugin-mcp-invalid-"));
     const mcpPath = path.join(root, "mcp.json");

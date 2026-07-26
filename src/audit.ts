@@ -16,18 +16,21 @@ export interface AuditOptions {
   policy?: RegistryPolicy;
 }
 
-const SHELL_COMMANDS = new Set([
-  "bash",
-  "cmd",
-  "cmd.exe",
-  "fish",
-  "pwsh",
-  "pwsh.exe",
-  "powershell",
-  "powershell.exe",
-  "sh",
-  "zsh",
-]);
+const SHELL_COMMANDS = new Set(["bash", "cmd", "fish", "pwsh", "powershell", "sh", "zsh"]);
+
+/**
+ * Normalizes an MCP command for policy comparison: basename, lowercase, and no
+ * Windows executable suffix, so `C:\...\bash.exe` matches `bash` and policy
+ * lists written as `node` also cover `node.exe`.
+ */
+function normalizeCommandName(command: string): string {
+  // win32.basename splits on both separators, so Windows-style command paths
+  // normalize correctly even when the audit runs on POSIX CI hosts.
+  return path.win32
+    .basename(command)
+    .toLowerCase()
+    .replace(/\.(exe|cmd|bat)$/, "");
+}
 
 /**
  * Runs registry-level safety checks that complement schema validation. These
@@ -174,7 +177,7 @@ export function auditMcpServer(
   }
 
   if (typeof config.command === "string") {
-    const commandName = path.basename(config.command).toLowerCase();
+    const commandName = normalizeCommandName(config.command);
     const args = Array.isArray(config.args) ? config.args.map(String) : [];
 
     if (policy?.allowedMcpCommands && !policy.allowedMcpCommands.includes(commandName)) {
@@ -243,70 +246,76 @@ export function auditMcpServer(
       });
     }
 
-    if (!url) {
-      return issues;
-    }
-
-    if (policy?.allowedRemoteMcpHosts && !policy.allowedRemoteMcpHosts.includes(url.host)) {
-      issues.push({
-        severity: "error",
-        code: "MCP_REMOTE_HOST_NOT_ALLOWED",
-        path: `${basePath}.url`,
-        file: server.sourcePath,
-        line: server.fieldLines?.url ?? server.line,
-        message: `Remote MCP host '${url.host}' is not allowed by project policy.`,
-        help: "Add the host to allowedRemoteMcpHosts or use an approved MCP endpoint.",
-      });
-    }
-
-    if (policy?.deniedRemoteMcpHosts?.includes(url.host)) {
-      issues.push({
-        severity: "error",
-        code: "MCP_REMOTE_HOST_DENIED",
-        path: `${basePath}.url`,
-        file: server.sourcePath,
-        line: server.fieldLines?.url ?? server.line,
-        message: `Remote MCP host '${url.host}' is denied by project policy.`,
-        help: "Use a different MCP endpoint or update deniedRemoteMcpHosts after review.",
-      });
-    }
-
-    if (url.protocol !== "https:") {
-      issues.push({
-        severity: options.strict ? "error" : "warning",
-        code: "MCP_REMOTE_NOT_HTTPS",
-        path: `${basePath}.url`,
-        file: server.sourcePath,
-        line: server.fieldLines?.url ?? server.line,
-        message: "Remote MCP servers should use HTTPS.",
-        help: "Switch the endpoint to HTTPS or document and suppress the exception.",
-      });
-    }
-
-    if (!config.bearer_token_env_var && options.strict) {
-      issues.push({
-        severity: "warning",
-        code: "MCP_REMOTE_AUTH_UNDOCUMENTED",
-        path: `${basePath}.bearer_token_env_var`,
-        file: server.sourcePath,
-        line: server.fieldLines?.bearer_token_env_var ?? server.line,
-        message: "Remote MCP servers without bearer_token_env_var should be explicitly documented.",
-        help: "Set bearer_token_env_var when the endpoint requires auth, or document why it is public.",
-      });
-    }
-
-    for (const [key, value] of url.searchParams.entries()) {
-      if (looksLikeSecretKey(key) || looksLikeSecretLiteral(value)) {
+    // An invalid URL must not short-circuit the remaining transport-independent
+    // checks below, so the URL-specific checks are gated instead of returning.
+    if (url) {
+      if (policy?.allowedRemoteMcpHosts && !policy.allowedRemoteMcpHosts.includes(url.host)) {
         issues.push({
-          severity: "warning",
-          code: "MCP_REMOTE_URL_SECRET",
+          severity: "error",
+          code: "MCP_REMOTE_HOST_NOT_ALLOWED",
           path: `${basePath}.url`,
           file: server.sourcePath,
           line: server.fieldLines?.url ?? server.line,
-          message: "Remote MCP URL appears to contain a credential in the query string.",
-          help: "Move credentials to bearer_token_env_var or env_http_headers instead of committing URL secrets.",
+          message: `Remote MCP host '${url.host}' is not allowed by project policy.`,
+          help: "Add the host to allowedRemoteMcpHosts or use an approved MCP endpoint.",
         });
-        break;
+      }
+
+      // Deny lists must not fail open when the URL carries a non-default port,
+      // so both host (with port) and hostname are compared.
+      if (
+        policy?.deniedRemoteMcpHosts?.includes(url.host) ||
+        policy?.deniedRemoteMcpHosts?.includes(url.hostname)
+      ) {
+        issues.push({
+          severity: "error",
+          code: "MCP_REMOTE_HOST_DENIED",
+          path: `${basePath}.url`,
+          file: server.sourcePath,
+          line: server.fieldLines?.url ?? server.line,
+          message: `Remote MCP host '${url.host}' is denied by project policy.`,
+          help: "Use a different MCP endpoint or update deniedRemoteMcpHosts after review.",
+        });
+      }
+
+      if (url.protocol !== "https:") {
+        issues.push({
+          severity: options.strict ? "error" : "warning",
+          code: "MCP_REMOTE_NOT_HTTPS",
+          path: `${basePath}.url`,
+          file: server.sourcePath,
+          line: server.fieldLines?.url ?? server.line,
+          message: "Remote MCP servers should use HTTPS.",
+          help: "Switch the endpoint to HTTPS or document and suppress the exception.",
+        });
+      }
+
+      if (!config.bearer_token_env_var && options.strict) {
+        issues.push({
+          severity: "warning",
+          code: "MCP_REMOTE_AUTH_UNDOCUMENTED",
+          path: `${basePath}.bearer_token_env_var`,
+          file: server.sourcePath,
+          line: server.fieldLines?.bearer_token_env_var ?? server.line,
+          message:
+            "Remote MCP servers without bearer_token_env_var should be explicitly documented.",
+          help: "Set bearer_token_env_var when the endpoint requires auth, or document why it is public.",
+        });
+      }
+
+      for (const [key, value] of url.searchParams.entries()) {
+        if (looksLikeSecretKey(key) || looksLikeSecretLiteral(value)) {
+          issues.push({
+            severity: "warning",
+            code: "MCP_REMOTE_URL_SECRET",
+            path: `${basePath}.url`,
+            file: server.sourcePath,
+            line: server.fieldLines?.url ?? server.line,
+            message: "Remote MCP URL appears to contain a credential in the query string.",
+            help: "Move credentials to bearer_token_env_var or env_http_headers instead of committing URL secrets.",
+          });
+          break;
+        }
       }
     }
   }
@@ -336,6 +345,26 @@ export function auditMcpServer(
       message: "Broad default tool approval policies should be reviewed by a maintainer.",
       help: "Prefer prompt/approve/reject or per-tool approval modes unless the broad mode is intentional.",
     });
+  }
+
+  if (config.tools && typeof config.tools === "object" && !Array.isArray(config.tools)) {
+    for (const [toolName, toolValue] of Object.entries(config.tools as Record<string, unknown>)) {
+      const toolPolicy =
+        toolValue && typeof toolValue === "object" && !Array.isArray(toolValue)
+          ? (toolValue as Record<string, unknown>)
+          : {};
+      if (toolPolicy.approval_mode === "always" || toolPolicy.approval_mode === "never") {
+        issues.push({
+          severity: options.strict ? "error" : "warning",
+          code: "MCP_BROAD_APPROVAL_MODE",
+          path: `${basePath}.tools.${toolName}.approval_mode`,
+          file: server.sourcePath,
+          line: server.fieldLines?.tools ?? server.line,
+          message: `Broad approval mode for tool '${toolName}' should be reviewed by a maintainer.`,
+          help: "Prefer prompt/approve/reject unless the broad per-tool mode is intentional.",
+        });
+      }
+    }
   }
 
   if (config.env && typeof config.env === "object" && !Array.isArray(config.env)) {

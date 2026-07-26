@@ -85,11 +85,12 @@ export interface LoadedPolicy {
 export const DEFAULT_POLICY: RegistryPolicy = RegistryPolicySchema.parse({});
 
 export const REGISTRY_POLICY_PRESETS: Record<RegistryPolicyPreset, RegistryPolicyInput> = {
+  // Milder presets deliberately omit failOnWarnings: false (the schema default)
+  // so combining presets via extends never silently downgrades a stricter one.
   recommended: {
     requirePinnedMcpPackages: true,
     requireExplicitMcpToolPolicy: true,
     requirePluginSkillPaths: true,
-    failOnWarnings: false,
   },
   "strict-mcp": {
     requirePinnedMcpPackages: true,
@@ -100,7 +101,6 @@ export const REGISTRY_POLICY_PRESETS: Record<RegistryPolicyPreset, RegistryPolic
   "plugin-review": {
     requirePluginSkillPaths: true,
     requireExplicitMcpToolPolicy: true,
-    failOnWarnings: false,
   },
   "strict-supply-chain": {
     requirePinnedMcpPackages: true,
@@ -177,7 +177,9 @@ export async function loadRegistryPolicy(cwd: string, policyFile?: string): Prom
     const parsed = sourcePath.endsWith(".json")
       ? (JSON.parse(content) as unknown)
       : (parseYaml(content) as unknown);
-    const validation = RegistryPolicyInputSchema.safeParse(parsed);
+    // An empty or comments-only policy file parses to null; treat it as an
+    // empty policy instead of failing schema validation.
+    const validation = RegistryPolicyInputSchema.safeParse(parsed ?? {});
 
     if (!validation.success) {
       return {

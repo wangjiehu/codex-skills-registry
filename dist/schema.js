@@ -18,7 +18,9 @@ export const SkillNameSchema = z
     .regex(/^[a-z0-9][a-z0-9._-]*$/, {
     message: "Use lowercase letters, numbers, dots, underscores, or hyphens; start with a letter or number.",
 });
-const SemverishSchema = z.string().regex(/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/, {
+const SemverishSchema = z
+    .string()
+    .regex(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/, {
     message: "Expected a semver-like version such as 0.1.0 or 1.0.0-beta.1.",
 });
 /**
@@ -192,11 +194,10 @@ export function zodErrorToIssues(error, basePath = "$") {
  */
 export function normalizeSkillInput(input, defaults = {}) {
     const record = z.record(z.string(), z.unknown()).parse(input);
-    const triggers = Array.isArray(record.triggers)
-        ? record.triggers
-        : typeof record.triggerType === "string"
-            ? [record.triggerType]
-            : undefined;
+    // A single-string triggers value is wrapped instead of dropped; any other
+    // non-array shape is passed through so validation rejects it loudly.
+    const rawTriggers = record.triggers ?? (typeof record.triggerType === "string" ? [record.triggerType] : undefined);
+    const triggers = typeof rawTriggers === "string" ? [rawTriggers] : rawTriggers;
     const aliased = {
         ...record,
         name: record.name ?? record.skillName,

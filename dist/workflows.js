@@ -196,7 +196,7 @@ function parseWorkflowRecord(record, sourcePath, content) {
         const job = jobValue && typeof jobValue === "object" && !Array.isArray(jobValue)
             ? jobValue
             : {};
-        const jobLine = findYamlKeyLine(lines, jobId);
+        const jobLine = findYamlJobLine(lines, jobId);
         jobs.push({
             id: jobId,
             permissions: job.permissions,
@@ -316,6 +316,33 @@ function findYamlKeyLine(lines, key) {
     const index = lines.findIndex((line) => pattern.test(line));
     return index >= 0 ? index + 1 : undefined;
 }
+/**
+ * Finds a job id line inside the jobs: block at the job indent level, so a
+ * top-level key or env entry that shares the job id name is never matched.
+ */
+function findYamlJobLine(lines, jobId) {
+    const jobsIndex = lines.findIndex((line) => /^jobs\s*:/.test(line));
+    if (jobsIndex < 0) {
+        return findYamlKeyLine(lines, jobId);
+    }
+    const pattern = new RegExp(`^\\s+${escapeYamlKey(jobId)}\\s*:`);
+    let jobIndent;
+    for (let index = jobsIndex + 1; index < lines.length; index += 1) {
+        const line = lines[index] ?? "";
+        if (!line.trim() || line.trimStart().startsWith("#")) {
+            continue;
+        }
+        const indent = lineIndent(line);
+        if (indent === 0) {
+            break;
+        }
+        jobIndent ??= indent;
+        if (indent === jobIndent && pattern.test(line)) {
+            return index + 1;
+        }
+    }
+    return undefined;
+}
 function findNestedYamlKeyLine(lines, startLine, key) {
     if (!startLine) {
         return findYamlKeyLine(lines, key);
@@ -339,15 +366,30 @@ function findNestedYamlKeyLine(lines, startLine, key) {
 }
 function findNthYamlFieldLine(lines, key, occurrence) {
     const pattern = new RegExp(`^\\s*-?\\s*${escapeYamlKey(key)}\\s*:`);
+    const blockScalarPattern = /:\s*[|>][+-]?\d*\s*(?:#.*)?$/;
     let seen = 0;
+    let scalarIndent;
     for (const [index, line] of lines.entries()) {
-        if (!pattern.test(line)) {
-            continue;
+        // Lines inside a block scalar (for example a run: | script that itself
+        // contains uses: text) must not count as field occurrences.
+        if (scalarIndent !== undefined) {
+            if (!line.trim()) {
+                continue;
+            }
+            if (lineIndent(line) > scalarIndent) {
+                continue;
+            }
+            scalarIndent = undefined;
         }
-        if (seen === occurrence) {
-            return index + 1;
+        if (pattern.test(line)) {
+            if (seen === occurrence) {
+                return index + 1;
+            }
+            seen += 1;
         }
-        seen += 1;
+        if (blockScalarPattern.test(line)) {
+            scalarIndent = lineIndent(line);
+        }
     }
     return undefined;
 }

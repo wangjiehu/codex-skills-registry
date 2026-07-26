@@ -88,7 +88,9 @@ export class SkillsRegistry {
         const parsed = parseStructuredConfig(content, filePath);
         const skillsInput = Array.isArray(parsed)
             ? parsed
-            : Array.isArray(parsed.skills)
+            : parsed &&
+                typeof parsed === "object" &&
+                Array.isArray(parsed.skills)
                 ? parsed.skills
                 : undefined;
         if (!skillsInput) {
@@ -209,10 +211,10 @@ export class SkillsRegistry {
                     issues.push({
                         severity: "error",
                         code: "SKILL_ENTRY_POINT_MISSING",
-                        path: entryPath,
+                        path: `${skill.name}.entryPoint`,
                         file: skill.skillFile,
                         line: skillLine(skill, "entryPoint"),
-                        message: "Configured entryPoint does not exist.",
+                        message: `Configured entryPoint '${skill.entryPoint}' does not exist.`,
                         help: "Create the entry file or update entryPoint to the correct relative path.",
                     });
                 }
@@ -435,7 +437,10 @@ export class SkillsRegistry {
                 }
             }
             for (const serverName of declaredMcpServers) {
-                if (!this.mcpServers.some((server) => server.name === serverName)) {
+                // The plugin's own inline servers are also discovery entries, so only
+                // servers discovered outside the plugin count as project-enabled.
+                const discoveredOutsidePlugin = this.mcpServers.some((server) => server.name === serverName && !isSubpath(plugin.rootDir, server.sourcePath));
+                if (!discoveredOutsidePlugin) {
                     this.diagnostics.push({
                         severity: "warning",
                         code: "PLUGIN_MCP_NOT_DISCOVERED",

@@ -68,11 +68,12 @@ export const RegistryPolicySchema = RegistryPolicyInputSchema.omit({ extends: tr
     .strict();
 export const DEFAULT_POLICY = RegistryPolicySchema.parse({});
 export const REGISTRY_POLICY_PRESETS = {
+    // Milder presets deliberately omit failOnWarnings: false (the schema default)
+    // so combining presets via extends never silently downgrades a stricter one.
     recommended: {
         requirePinnedMcpPackages: true,
         requireExplicitMcpToolPolicy: true,
         requirePluginSkillPaths: true,
-        failOnWarnings: false,
     },
     "strict-mcp": {
         requirePinnedMcpPackages: true,
@@ -83,7 +84,6 @@ export const REGISTRY_POLICY_PRESETS = {
     "plugin-review": {
         requirePluginSkillPaths: true,
         requireExplicitMcpToolPolicy: true,
-        failOnWarnings: false,
     },
     "strict-supply-chain": {
         requirePinnedMcpPackages: true,
@@ -157,7 +157,9 @@ export async function loadRegistryPolicy(cwd, policyFile) {
         const parsed = sourcePath.endsWith(".json")
             ? JSON.parse(content)
             : parseYaml(content);
-        const validation = RegistryPolicyInputSchema.safeParse(parsed);
+        // An empty or comments-only policy file parses to null; treat it as an
+        // empty policy instead of failing schema validation.
+        const validation = RegistryPolicyInputSchema.safeParse(parsed ?? {});
         if (!validation.success) {
             return {
                 policy: DEFAULT_POLICY,

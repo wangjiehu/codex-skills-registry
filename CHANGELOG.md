@@ -2,6 +2,44 @@
 
 ## Unreleased
 
+- Fix the published CLI entry points being silent no-ops when invoked through
+  npm's POSIX bin symlinks (`npx codex-skills`, global installs) by resolving
+  `argv[1]` to its real path before the direct-run comparison.
+- Keep auditing MCP tool policy, approval modes, and env secrets when a remote
+  server URL is invalid instead of returning after the URL error.
+- Compare denied remote MCP hosts against the hostname as well as host:port so
+  a non-default port cannot bypass the deny list.
+- Normalize Windows executable suffixes (`.exe`, `.cmd`, `.bat`) in MCP
+  command checks so shell detection and allow/deny lists behave consistently
+  across platforms.
+- Flag broad per-tool `approval_mode` values in addition to the server-wide
+  default approval mode.
+- Only update pull request comments authored by the publishing token identity,
+  so other users pasting the hidden marker cannot capture the bot comment.
+- Escape user-controlled skill and issue text in the Markdown registry report,
+  and harden Markdown code spans against embedded backtick runs and newlines.
+- Accept semver versions that combine prerelease and build metadata, and wrap
+  single-string SKILL.md `triggers` values instead of silently discarding them.
+- Treat empty policy files as the default policy, and stop milder presets from
+  silently downgrading `failOnWarnings` when combined with stricter presets in
+  `extends`.
+- Report a `CONFIG_SKILLS_MISSING` diagnostic instead of crashing when a skill
+  config file is empty or null.
+- Give `SKILL_ENTRY_POINT_MISSING` findings a stable project-relative path so
+  baselines generated on one machine match in CI.
+- Make `doctor`'s invalid-skill count respect baselines, suppressions, and
+  changed-file filters, matching the reported issue lists.
+- Reject `--format sarif` up front for `list`, `run`, `export`, `baseline`,
+  `schema`, and `init-policy` instead of emitting mislabeled output.
+- Decode git C-quoted paths in `--changed-files` lists so findings on files
+  with special or non-ASCII characters are not silently dropped.
+- Unwrap camelCase `mcpServers` wrapper files referenced by plugin manifests.
+- Improve `file:line` hints for JSON MCP configs and workflow YAML by matching
+  keys depth-aware and ignoring block-scalar content, and stop labeling
+  project skills as examples based on unrelated `examples` path segments.
+- Warn with `PLUGIN_MCP_NOT_DISCOVERED` when a plugin's inline MCP servers are
+  absent from the project config; the plugin's own entries no longer satisfy
+  the check.
 - Update SHA-pinned `actions/setup-node` and `github/codeql-action` workflow
   dependencies and in-range npm dependencies.
 - Fix stale `@wangjiehu` npm scope references in docs, demo templates, and the

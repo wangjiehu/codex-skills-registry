@@ -1,20 +1,19 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { isMainModule } from "./utils.js";
 export function readNpmPackFilename(packJsonPath) {
     const parsed = JSON.parse(readFileSync(packJsonPath, "utf8"));
     if (!Array.isArray(parsed) || parsed.length === 0) {
         throw new Error("npm pack JSON output is empty.");
     }
     const entry = parsed[0];
-    if (typeof entry.filename !== "string" || entry.filename.length === 0) {
+    const filename = entry && typeof entry === "object" ? entry.filename : undefined;
+    if (typeof filename !== "string" || filename.length === 0) {
         throw new Error("npm pack JSON output does not contain a filename.");
     }
-    return entry.filename;
+    return filename;
 }
-const currentFile = fileURLToPath(import.meta.url);
-if (process.argv[1] && path.resolve(process.argv[1]) === currentFile) {
+if (isMainModule(import.meta.url)) {
     const packJsonPath = process.argv[2] ?? "npm-pack.json";
     try {
         console.log(readNpmPackFilename(packJsonPath));

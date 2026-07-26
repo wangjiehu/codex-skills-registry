@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { ValidationIssue } from "./schema.js";
-import { relativePathInside } from "./utils.js";
+import { relativePathInside, stripWindowsDrivePrefix } from "./utils.js";
 
 export interface SarifOptions {
   cwd?: string;
@@ -8,7 +8,7 @@ export interface SarifOptions {
 
 interface SarifResult {
   ruleId: string;
-  level: "error" | "warning" | "note";
+  level: "error" | "warning";
   message: {
     text: string;
   };
@@ -121,19 +121,6 @@ function ruleIdForIssue(ruleName: string): string {
   return result.join("").slice(0, 120) || "registry.issue";
 }
 
-function stripWindowsDrivePrefix(value: string): string {
-  if (
-    value.length >= 3 &&
-    isAsciiLetter(value[0] ?? "") &&
-    value[1] === ":" &&
-    (value[2] === "\\" || value[2] === "/")
-  ) {
-    return value.slice(3);
-  }
-
-  return value;
-}
-
 function isSarifRuleIdCharacter(char: string): boolean {
   const code = char.charCodeAt(0);
   return (
@@ -144,11 +131,6 @@ function isSarifRuleIdCharacter(char: string): boolean {
     char === "_" ||
     char === "-"
   );
-}
-
-function isAsciiLetter(char: string): boolean {
-  const code = char.charCodeAt(0);
-  return (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
 }
 
 function ruleNameForIssue(issue: ValidationIssue, cwd?: string): string {

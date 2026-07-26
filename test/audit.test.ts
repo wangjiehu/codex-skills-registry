@@ -128,6 +128,105 @@ describe("audit", () => {
     expect(issues.map((issue) => issue.code)).toContain("MCP_HEADER_ENV_VAR_INVALID");
   });
 
+  it("still audits tool policy and env secrets when the remote URL is invalid", () => {
+    const issues = auditMcpServer({
+      name: "remote",
+      sourcePath: "config.toml",
+      config: {
+        url: "not a url",
+        default_tools_approval_mode: "never",
+        env: {
+          API_KEY: "abc1234567890SECRET",
+        },
+      } as never,
+    });
+
+    const codes = issues.map((issue) => issue.code);
+    expect(codes).toContain("MCP_INVALID_REMOTE_URL");
+    expect(codes).toContain("MCP_TOOL_POLICY_MISSING");
+    expect(codes).toContain("MCP_BROAD_APPROVAL_MODE");
+    expect(codes).toContain("MCP_SECRET_LITERAL");
+  });
+
+  it("denies remote hosts even when the URL adds a non-default port", () => {
+    const issues = auditMcpServer(
+      {
+        name: "remote",
+        sourcePath: "config.toml",
+        config: {
+          url: "https://evil.example.com:8443/mcp",
+          enabled_tools: ["search"],
+        } as never,
+      },
+      {
+        policy: {
+          deniedRemoteMcpHosts: ["evil.example.com"],
+          requirePinnedMcpPackages: false,
+          requirePinnedWorkflowActions: false,
+          requireExplicitMcpToolPolicy: false,
+          requirePluginSkillPaths: false,
+          failOnWarnings: false,
+          suppressions: [],
+        },
+      },
+    );
+
+    expect(issues.map((issue) => issue.code)).toContain("MCP_REMOTE_HOST_DENIED");
+  });
+
+  it("normalizes Windows executable suffixes for command policy checks", () => {
+    const allowPolicy = {
+      allowedMcpCommands: ["node"],
+      requirePinnedMcpPackages: false,
+      requirePinnedWorkflowActions: false,
+      requireExplicitMcpToolPolicy: false,
+      requirePluginSkillPaths: false,
+      failOnWarnings: false,
+      suppressions: [],
+    };
+    const allowedIssues = auditMcpServer(
+      {
+        name: "docs",
+        sourcePath: "config.toml",
+        config: {
+          command: "node.exe",
+          enabled_tools: ["search"],
+        },
+      },
+      { policy: allowPolicy },
+    );
+    const shellIssues = auditMcpServer({
+      name: "shell",
+      sourcePath: "config.toml",
+      config: {
+        command: "C:\\Program Files\\Git\\bin\\bash.exe",
+        enabled_tools: ["run"],
+      },
+    });
+
+    expect(allowedIssues.map((issue) => issue.code)).not.toContain("MCP_COMMAND_NOT_ALLOWED");
+    expect(shellIssues.map((issue) => issue.code)).toContain("MCP_SHELL_COMMAND");
+  });
+
+  it("flags broad per-tool approval modes", () => {
+    const issues = auditMcpServer({
+      name: "docs",
+      sourcePath: "config.toml",
+      config: {
+        command: "node",
+        enabled_tools: ["search"],
+        tools: {
+          run_shell: { approval_mode: "never" },
+          search: { approval_mode: "prompt" },
+        },
+      } as never,
+    });
+
+    const broad = issues.filter((issue) => issue.code === "MCP_BROAD_APPROVAL_MODE");
+    expect(broad).toHaveLength(1);
+    expect(broad[0]?.path).toBe("mcp_servers.docs.tools.run_shell.approval_mode");
+  });
+
   it("applies MCP deny-list policy checks", () => {
     const issues = auditMcpServer(
       {

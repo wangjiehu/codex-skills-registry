@@ -1,5 +1,5 @@
 import path from "node:path";
-import { relativePathInside } from "./utils.js";
+import { relativePathInside, stripWindowsDrivePrefix } from "./utils.js";
 /**
  * Converts registry validation and audit issues to a SARIF 2.1.0 log. SARIF
  * output lets GitHub Code Scanning and similar tools ingest registry findings
@@ -86,15 +86,6 @@ function ruleIdForIssue(ruleName) {
     }
     return result.join("").slice(0, 120) || "registry.issue";
 }
-function stripWindowsDrivePrefix(value) {
-    if (value.length >= 3 &&
-        isAsciiLetter(value[0] ?? "") &&
-        value[1] === ":" &&
-        (value[2] === "\\" || value[2] === "/")) {
-        return value.slice(3);
-    }
-    return value;
-}
 function isSarifRuleIdCharacter(char) {
     const code = char.charCodeAt(0);
     return ((code >= 48 && code <= 57) ||
@@ -103,10 +94,6 @@ function isSarifRuleIdCharacter(char) {
         char === "." ||
         char === "_" ||
         char === "-");
-}
-function isAsciiLetter(char) {
-    const code = char.charCodeAt(0);
-    return (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
 }
 function ruleNameForIssue(issue, cwd) {
     if (!issue.file || !cwd || !path.isAbsolute(issue.file)) {

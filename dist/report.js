@@ -1,4 +1,5 @@
 import { issueCode } from "./issues.js";
+import { escapeHtml, escapeMarkdownText, markdownCodeSpan } from "./utils.js";
 /**
  * Creates a maintainer-facing report from a registry index.
  *
@@ -159,41 +160,43 @@ function formatSkillRows(reportSkills) {
     if (reportSkills.length === 0) {
         return ["No skills discovered."];
     }
-    return reportSkills.map((skill) => `- ${skill.name} (${skill.triggers.join(", ")}) - ${skill.description}`);
+    return reportSkills.map((skill) => `- ${markdownCodeSpan(skill.name)} (${escapeMarkdownText(skill.triggers.join(", "))}) - ${escapeMarkdownText(skill.description)}`);
 }
 function formatMcpRows(reportServers) {
     if (reportServers.length === 0) {
         return ["No MCP servers discovered."];
     }
-    return reportServers.map((server) => `- ${server.name} (${server.transport}) - ${server.sourcePath}`);
+    return reportServers.map((server) => `- ${markdownCodeSpan(server.name)} (${server.transport}) - ${markdownCodeSpan(server.sourcePath)}`);
 }
 function formatPluginRows(reportPlugins) {
     if (reportPlugins.length === 0) {
         return ["No plugin manifests discovered."];
     }
-    return reportPlugins.map((plugin) => `- ${plugin.name} - ${plugin.sourcePath}`);
+    return reportPlugins.map((plugin) => `- ${markdownCodeSpan(plugin.name)} - ${markdownCodeSpan(plugin.sourcePath)}`);
 }
 function formatWorkflowRows(reportWorkflows) {
     if (reportWorkflows.length === 0) {
         return ["No GitHub Actions workflows discovered."];
     }
-    return reportWorkflows.map((workflow) => `- ${workflow.name} - ${workflow.sourcePath} (${workflow.jobs} job${workflow.jobs === 1 ? "" : "s"}, ${workflow.actions} action reference${workflow.actions === 1 ? "" : "s"})`);
+    return reportWorkflows.map((workflow) => `- ${markdownCodeSpan(workflow.name)} - ${markdownCodeSpan(workflow.sourcePath)} (${workflow.jobs} job${workflow.jobs === 1 ? "" : "s"}, ${workflow.actions} action reference${workflow.actions === 1 ? "" : "s"})`);
 }
 function formatIssueRows(issues) {
     if (issues.length === 0) {
         return ["No findings."];
     }
     return issues.map((issue) => {
-        const location = issue.file ? ` (${issue.file}${issue.line ? `:${issue.line}` : ""})` : "";
-        const help = issue.help ? ` ${issue.help}` : "";
-        return `- [${issue.severity.toUpperCase()}] ${issueCode(issue)} ${issue.path}${location}: ${issue.message}${help}`;
+        const location = issue.file
+            ? ` (${markdownCodeSpan(`${issue.file}${issue.line ? `:${issue.line}` : ""}`)})`
+            : "";
+        const help = issue.help ? ` ${escapeMarkdownText(issue.help)}` : "";
+        return `- [${issue.severity.toUpperCase()}] ${markdownCodeSpan(issueCode(issue))} ${markdownCodeSpan(issue.path)}${location}: ${escapeMarkdownText(issue.message)}${help}`;
     });
 }
 function formatNextActions(nextActions) {
     if (nextActions.length === 0) {
         return ["No immediate action required."];
     }
-    return nextActions.map((action) => `- ${action}`);
+    return nextActions.map((action) => `- ${escapeMarkdownText(action)}`);
 }
 function nextActionsForIssues(issues) {
     if (issues.length === 0) {
@@ -216,12 +219,5 @@ function nextActionsForIssues(issues) {
         actions.add("Review GitHub Actions permissions, triggers, and pinned action references.");
     }
     return [...actions];
-}
-function escapeHtml(value) {
-    return value
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
 }
 //# sourceMappingURL=report.js.map

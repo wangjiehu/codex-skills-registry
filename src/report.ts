@@ -1,6 +1,7 @@
 import type { ValidationIssue } from "./schema.js";
 import type { RegistryIndex } from "./registry.js";
 import { issueCode } from "./issues.js";
+import { escapeHtml, escapeMarkdownText, markdownCodeSpan } from "./utils.js";
 
 export interface RegistryReportSummary {
   skills: number;
@@ -212,7 +213,8 @@ function formatSkillRows(reportSkills: RegistryReport["skills"]): string[] {
   }
 
   return reportSkills.map(
-    (skill) => `- ${skill.name} (${skill.triggers.join(", ")}) - ${skill.description}`,
+    (skill) =>
+      `- ${markdownCodeSpan(skill.name)} (${escapeMarkdownText(skill.triggers.join(", "))}) - ${escapeMarkdownText(skill.description)}`,
   );
 }
 
@@ -222,7 +224,8 @@ function formatMcpRows(reportServers: RegistryReport["mcpServers"]): string[] {
   }
 
   return reportServers.map(
-    (server) => `- ${server.name} (${server.transport}) - ${server.sourcePath}`,
+    (server) =>
+      `- ${markdownCodeSpan(server.name)} (${server.transport}) - ${markdownCodeSpan(server.sourcePath)}`,
   );
 }
 
@@ -231,7 +234,9 @@ function formatPluginRows(reportPlugins: RegistryReport["plugins"]): string[] {
     return ["No plugin manifests discovered."];
   }
 
-  return reportPlugins.map((plugin) => `- ${plugin.name} - ${plugin.sourcePath}`);
+  return reportPlugins.map(
+    (plugin) => `- ${markdownCodeSpan(plugin.name)} - ${markdownCodeSpan(plugin.sourcePath)}`,
+  );
 }
 
 function formatWorkflowRows(reportWorkflows: RegistryReport["workflows"]): string[] {
@@ -241,7 +246,7 @@ function formatWorkflowRows(reportWorkflows: RegistryReport["workflows"]): strin
 
   return reportWorkflows.map(
     (workflow) =>
-      `- ${workflow.name} - ${workflow.sourcePath} (${workflow.jobs} job${workflow.jobs === 1 ? "" : "s"}, ${workflow.actions} action reference${workflow.actions === 1 ? "" : "s"})`,
+      `- ${markdownCodeSpan(workflow.name)} - ${markdownCodeSpan(workflow.sourcePath)} (${workflow.jobs} job${workflow.jobs === 1 ? "" : "s"}, ${workflow.actions} action reference${workflow.actions === 1 ? "" : "s"})`,
   );
 }
 
@@ -251,9 +256,11 @@ function formatIssueRows(issues: ValidationIssue[]): string[] {
   }
 
   return issues.map((issue) => {
-    const location = issue.file ? ` (${issue.file}${issue.line ? `:${issue.line}` : ""})` : "";
-    const help = issue.help ? ` ${issue.help}` : "";
-    return `- [${issue.severity.toUpperCase()}] ${issueCode(issue)} ${issue.path}${location}: ${issue.message}${help}`;
+    const location = issue.file
+      ? ` (${markdownCodeSpan(`${issue.file}${issue.line ? `:${issue.line}` : ""}`)})`
+      : "";
+    const help = issue.help ? ` ${escapeMarkdownText(issue.help)}` : "";
+    return `- [${issue.severity.toUpperCase()}] ${markdownCodeSpan(issueCode(issue))} ${markdownCodeSpan(issue.path)}${location}: ${escapeMarkdownText(issue.message)}${help}`;
   });
 }
 
@@ -262,7 +269,7 @@ function formatNextActions(nextActions: string[]): string[] {
     return ["No immediate action required."];
   }
 
-  return nextActions.map((action) => `- ${action}`);
+  return nextActions.map((action) => `- ${escapeMarkdownText(action)}`);
 }
 
 function nextActionsForIssues(issues: ValidationIssue[]): string[] {
@@ -288,12 +295,4 @@ function nextActionsForIssues(issues: ValidationIssue[]): string[] {
   }
 
   return [...actions];
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }

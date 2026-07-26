@@ -17,6 +17,36 @@ describe("schema", () => {
     expect(CodexSkillSchema.safeParse(skill).success).toBe(true);
   });
 
+  it("wraps a single-string triggers value instead of silently dropping it", () => {
+    const skill = normalizeSkillInput({
+      name: "security-scan",
+      description: "Run repository security scans and summarize the findings.",
+      triggers: "security",
+    });
+
+    expect(skill.triggers).toEqual(["security"]);
+  });
+
+  it("rejects triggers values that are neither arrays nor strings", () => {
+    expect(() =>
+      normalizeSkillInput({
+        name: "security-scan",
+        description: "Run repository security scans and summarize the findings.",
+        triggers: 5,
+      }),
+    ).toThrow();
+  });
+
+  it("accepts semver versions combining prerelease and build metadata", () => {
+    const skill = normalizeSkillInput({
+      name: "release-notes",
+      description: "Draft release notes from merged pull requests for maintainers.",
+      version: "1.2.3-rc.1+build.5",
+    });
+
+    expect(skill.version).toBe("1.2.3-rc.1+build.5");
+  });
+
   it("accepts stdio and HTTP MCP server configs", () => {
     expect(
       McpServerConfigSchema.safeParse({

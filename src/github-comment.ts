@@ -18,6 +18,9 @@ interface GitHubComment {
   id: number;
   body?: string;
   html_url?: string;
+  user?: {
+    login?: string;
+  };
 }
 
 const DEFAULT_MARKER = "<!-- codex-skills-registry -->";
@@ -53,8 +56,8 @@ export async function publishPullRequestComment(
 
   const body = withCommentMarker(options.body, marker);
   const commentsPath = `/repos/${repository}/issues/${pullRequestNumber}/comments`;
-  const comments = await listPullRequestComments(apiUrl, commentsPath, token);
-  const existing = comments.find((comment) => comment.body?.includes(marker));
+  const viewerLogin = await resolveViewerLogin(apiUrl, token);
+  const existing = await findMarkerComment(apiUrl, commentsPath, token, marker, viewerLogin);
 
   if (existing) {
     const updated = await githubRequest<GitHubComment>(
@@ -93,23 +96,47 @@ function normalizeCommentMarker(marker: string | undefined): string {
   return marker && marker.trim().length > 0 ? marker : DEFAULT_MARKER;
 }
 
-async function listPullRequestComments(
+/**
+ * Resolves the login that authors comments created with this token. Any PR
+ * participant can paste the hidden marker into their own comment, so the
+ * marker alone must never select the comment to update.
+ */
+async function resolveViewerLogin(apiUrl: string, token: string): Promise<string> {
+  try {
+    const user = await githubRequest<{ login?: string }>(apiUrl, "/user", token);
+    if (typeof user.login === "string" && user.login.length > 0) {
+      return user.login;
+    }
+  } catch {
+    // GITHUB_TOKEN installation tokens cannot call /user; comments created
+    // with them are authored by github-actions[bot].
+  }
+
+  return "github-actions[bot]";
+}
+
+async function findMarkerComment(
   apiUrl: string,
   commentsPath: string,
   token: string,
-): Promise<GitHubComment[]> {
-  const comments: GitHubComment[] = [];
-
+  marker: string,
+  viewerLogin: string,
+): Promise<GitHubComment | undefined> {
   for (let page = 1; ; page += 1) {
     const pageComments = await githubRequest<GitHubComment[]>(
       apiUrl,
       `${commentsPath}?per_page=100&page=${page}`,
       token,
     );
-    comments.push(...pageComments);
+    const match = pageComments.find(
+      (comment) => comment.body?.includes(marker) && comment.user?.login === viewerLogin,
+    );
+    if (match) {
+      return match;
+    }
 
     if (pageComments.length < 100) {
-      return comments;
+      return undefined;
     }
   }
 }

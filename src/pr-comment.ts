@@ -1,6 +1,7 @@
 import { issueCode } from "./issues.js";
 import type { RegistryReport } from "./report.js";
 import type { ValidationIssue } from "./schema.js";
+import { escapeMarkdownText, markdownCodeSpan as codeSpan } from "./utils.js";
 
 export interface PullRequestCommentOptions {
   maxFindings?: number;
@@ -91,15 +92,4 @@ function formatArtifacts(options: PullRequestCommentOptions): string[] {
   }
 
   return rows.length > 0 ? rows : ["No artifact paths were provided."];
-}
-
-function escapeMarkdownText(value: string): string {
-  return value
-    .replace(/\\/g, "\\\\")
-    .replace(/([*_`[\]()#+!|<>])/g, "\\$1")
-    .replace(/@/g, "&#64;");
-}
-
-function codeSpan(value: string): string {
-  return value.includes("`") ? `\`\` ${value} \`\`` : `\`${value}\``;
 }
