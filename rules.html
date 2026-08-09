@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rules</title>
+  <style>
+    :root { color-scheme: light; --ink: #182033; --muted: #647084; --line: #dde3ec; --panel: #f7f8fa; --surface: #ffffff; --brand: #0f766e; --brand-soft: #e6f3f1; --danger: #b42318; --warn: #9a6700; }
+    * { box-sizing: border-box; }
+    body { background: #f5f6f8; color: var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.5; margin: 0; overflow-x: hidden; }
+    header { background: rgba(255, 255, 255, 0.94); border-bottom: 1px solid var(--line); }
+    nav, main { margin: 0 auto; max-width: 1180px; padding: 0 24px; }
+    nav { align-items: center; display: flex; min-height: 58px; gap: 22px; }
+    nav a { color: var(--muted); font-size: 15px; font-weight: 650; text-decoration: none; }
+    nav a[aria-current="page"] { color: var(--brand); }
+    nav a:hover { color: var(--ink); }
+    main { padding-bottom: 48px; }
+    .brand { color: var(--ink); font-size: 16px; font-weight: 750; margin-right: auto; }
+    .hero { align-items: end; border-bottom: 1px solid var(--line); display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr) auto; min-width: 0; padding: 48px 0 32px; }
+    .hero.compact { display: block; padding-bottom: 26px; }
+    .hero-copy { min-width: 0; }
+    .hero-copy p { color: var(--muted); font-size: 18px; margin-bottom: 0; }
+    .eyebrow { color: var(--brand); font-size: 12px; font-weight: 760; letter-spacing: 0; margin: 0 0 10px; text-transform: uppercase; }
+    h1 { font-size: clamp(34px, 4vw, 48px); line-height: 1.08; letter-spacing: 0; margin: 0 0 14px; max-width: 760px; }
+    h2 { font-size: 21px; letter-spacing: 0; margin: 0; }
+    h3 { font-size: 17px; margin: 0 0 10px; }
+    p { max-width: 760px; overflow-wrap: break-word; }
+    .section-heading { align-items: end; border-top: 1px solid var(--line); display: flex; gap: 16px; justify-content: space-between; margin: 34px 0 14px; padding-top: 22px; }
+    .section-heading p { color: var(--muted); font-size: 14px; margin: 0; text-align: right; }
+    code, pre { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+    code { padding: 2px 5px; }
+    pre { overflow-x: auto; padding: 16px; }
+    pre code { border: 0; padding: 0; }
+    .status-strip { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 0; max-width: 100%; min-width: 280px; }
+    .status-strip span { align-items: baseline; border-bottom: 1px solid var(--line); color: var(--muted); display: flex; gap: 8px; justify-content: space-between; padding: 10px 12px; white-space: nowrap; }
+    .status-strip span:last-child { border-bottom: 0; }
+    .status-strip strong { color: var(--ink); font-size: 20px; }
+    .metric-grid { display: grid; gap: 10px; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .metric { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; min-width: 0; padding: 15px 16px; }
+    .metric span { color: var(--muted); display: block; font-size: 12px; font-weight: 760; text-transform: uppercase; }
+    .metric strong { display: block; font-size: 30px; line-height: 1; margin-top: 10px; }
+    .metric.danger strong { color: var(--danger); }
+    .metric.warn strong { color: var(--warn); }
+    .split { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); }
+    .list-block, .rule { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+    .rule + .rule { margin-top: 12px; }
+    .rule-tools { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; margin: 24px 0; padding: 16px; }
+    .rule-tools h2 { margin-top: 0; }
+    .filters { align-items: end; display: grid; gap: 10px 12px; grid-template-columns: auto minmax(180px, 1fr) auto minmax(160px, 220px); }
+    input, select { border: 1px solid var(--line); border-radius: 6px; color: var(--ink); font: inherit; min-height: 40px; padding: 8px 10px; width: 100%; }
+    .rule-count, .empty-state { color: var(--muted); font-size: 14px; margin: 12px 0 0; }
+    [hidden] { display: none !important; }
+    ul { margin: 8px 0 0; padding-left: 18px; }
+    li { margin: 6px 0; overflow-wrap: break-word; }
+    .item-list { list-style: none; padding-left: 0; }
+    .item-list li { border-top: 1px solid var(--line); margin: 0; padding: 9px 0; }
+    .item-list li:first-child { border-top: 0; padding-top: 0; }
+    .item-title { display: block; font-weight: 720; }
+    .item-detail { color: var(--muted); display: block; font-size: 14px; margin-top: 2px; overflow-wrap: anywhere; }
+    .finding.error { color: var(--danger); }
+    .finding.warning { color: var(--warn); }
+    .timestamp { color: var(--muted); font-size: 13px; margin-top: 40px; }
+    @media (max-width: 980px) { .hero { align-items: start; grid-template-columns: 1fr; } .status-strip { min-width: 0; } .metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 640px) { nav, main { max-width: 100vw; width: 100vw; } nav { align-items: flex-start; flex-direction: column; gap: 8px; padding-bottom: 16px; padding-top: 16px; } .brand { margin-right: 0; } h1 { font-size: 30px; max-width: 100%; } .hero-copy p { font-size: 16px; max-width: 100%; } .filters, .metric-grid { grid-template-columns: 1fr; } .section-heading { align-items: start; flex-direction: column; } .section-heading p { max-width: 100%; text-align: left; } .status-strip { width: 100%; } .status-strip span { display: grid; grid-template-columns: 44px minmax(0, 1fr); justify-content: start; white-space: normal; } }
+  </style>
+</head>
+<body>
+  <header>
+    <nav aria-label="Primary navigation">
+      <a class="brand" href="index.html">Codex Skills Registry</a>
+      <a href="index.html">Overview</a>
+      <a href="rules.html" aria-current="page">Rules</a>
+      <a href="policy.html">Policy</a>
+    </nav>
+  </header>
+  <main>
+    
+<section class="hero compact">
+  <p class="eyebrow">Rules catalog</p>
+  <h1>Registry Rules</h1>
+  <p>Stable issue codes, what they mean, and how maintainers should resolve them.</p>
+</section>
+<section class="rule-tools" aria-labelledby="rules-filter-heading">
+  <h2 id="rules-filter-heading">Find Rules</h2>
+  <div class="filters">
+    <label for="rules-search">Search</label>
+    <input id="rules-search" type="search" autocomplete="off" placeholder="Issue code, title, or fix">
+    <label for="rules-category">Category</label>
+    <select id="rules-category">
+      <option value="">All categories</option>
+      <option value="BASELINE">BASELINE</option><option value="CONFIG">CONFIG</option><option value="MCP">MCP</option><option value="PLUGIN">PLUGIN</option><option value="SCHEMA">SCHEMA</option><option value="SKILL">SKILL</option><option value="WORKFLOW">WORKFLOW</option>
+    </select>
+  </div>
+  <p class="rule-count"><span id="rules-visible-count">55</span> of 55 rules</p>
+</section>
+<section class="rules" id="rules-list">
+  
+    <article class="rule" id="SCHEMA_VALIDATION_FAILED" data-rule-card data-category="SCHEMA" data-rule-text="schema_validation_failed schema validation failed a registry document does not match the published codex skills schema. fix the reported field, then rerun codex-skills validate or doctor.">
+      <h2><code>SCHEMA_VALIDATION_FAILED</code> Schema validation failed</h2>
+      <p>A registry document does not match the published Codex Skills schema.</p>
+      <p><strong>Fix:</strong> Fix the reported field, then rerun codex-skills validate or doctor.</p>
+    </article>
+    <article class="rule" id="CONFIG_SKILLS_MISSING" data-rule-card data-category="CONFIG" data-rule-text="config_skills_missing configured skills list is missing a skill config file was provided but did not include a skills array. add a skills array or remove the invalid config file.">
+      <h2><code>CONFIG_SKILLS_MISSING</code> Configured skills list is missing</h2>
+      <p>A skill config file was provided but did not include a skills array.</p>
+      <p><strong>Fix:</strong> Add a skills array or remove the invalid config file.</p>
+    </article>
+    <article class="rule" id="CONFIG_SKILL_INVALID" data-rule-card data-category="CONFIG" data-rule-text="config_skill_invalid configured skill is invalid a skill entry loaded from config could not be validated as a codex skill. fix the configured skill metadata or remove the invalid entry.">
+      <h2><code>CONFIG_SKILL_INVALID</code> Configured skill is invalid</h2>
+      <p>A skill entry loaded from config could not be validated as a Codex Skill.</p>
+      <p><strong>Fix:</strong> Fix the configured skill metadata or remove the invalid entry.</p>
+    </article>
+    <article class="rule" id="SKILL_FILE_MISSING" data-rule-card data-category="SKILL" data-rule-text="skill_file_missing missing skill.md file a discovered skill directory does not contain a readable skill.md file. add skill.md or remove the directory from the registry scan path.">
+      <h2><code>SKILL_FILE_MISSING</code> Missing SKILL.md file</h2>
+      <p>A discovered skill directory does not contain a readable SKILL.md file.</p>
+      <p><strong>Fix:</strong> Add SKILL.md or remove the directory from the registry scan path.</p>
+    </article>
+    <article class="rule" id="SKILL_MARKDOWN_INVALID" data-rule-card data-category="SKILL" data-rule-text="skill_markdown_invalid invalid skill markdown a skill.md file could not be parsed into valid frontmatter and content. fix the frontmatter syntax and required skill metadata fields.">
+      <h2><code>SKILL_MARKDOWN_INVALID</code> Invalid skill Markdown</h2>
+      <p>A SKILL.md file could not be parsed into valid frontmatter and content.</p>
+      <p><strong>Fix:</strong> Fix the frontmatter syntax and required skill metadata fields.</p>
+    </article>
+    <article class="rule" id="SKILL_DISABLED" data-rule-card data-category="SKILL" data-rule-text="skill_disabled disabled skill skipped a skill was marked disabled and skipped by discovery. enable the skill only after it is ready for validation and use.">
+      <h2><code>SKILL_DISABLED</code> Disabled skill skipped</h2>
+      <p>A skill was marked disabled and skipped by discovery.</p>
+      <p><strong>Fix:</strong> Enable the skill only after it is ready for validation and use.</p>
+    </article>
+    <article class="rule" id="SKILL_DUPLICATE" data-rule-card data-category="SKILL" data-rule-text="skill_duplicate duplicate skill name two discovered skills use the same registry name. rename one skill or remove the duplicate registration.">
+      <h2><code>SKILL_DUPLICATE</code> Duplicate skill name</h2>
+      <p>Two discovered skills use the same registry name.</p>
+      <p><strong>Fix:</strong> Rename one skill or remove the duplicate registration.</p>
+    </article>
+    <article class="rule" id="SKILL_NOT_REGISTERED" data-rule-card data-category="SKILL" data-rule-text="skill_not_registered skill is not registered a requested skill name does not exist in the loaded registry. use a registered skill name or add the missing skill to the project.">
+      <h2><code>SKILL_NOT_REGISTERED</code> Skill is not registered</h2>
+      <p>A requested skill name does not exist in the loaded registry.</p>
+      <p><strong>Fix:</strong> Use a registered skill name or add the missing skill to the project.</p>
+    </article>
+    <article class="rule" id="SKILL_NOT_ALLOWED" data-rule-card data-category="SKILL" data-rule-text="skill_not_allowed skill not allowed by policy the project policy allows only specific skills and this skill is outside that list. add the skill to allowedskills or remove it from the registry.">
+      <h2><code>SKILL_NOT_ALLOWED</code> Skill not allowed by policy</h2>
+      <p>The project policy allows only specific skills and this skill is outside that list.</p>
+      <p><strong>Fix:</strong> Add the skill to allowedSkills or remove it from the registry.</p>
+    </article>
+    <article class="rule" id="SKILL_DENIED" data-rule-card data-category="SKILL" data-rule-text="skill_denied skill denied by policy the project policy explicitly denies this skill. remove the skill or update deniedskills after maintainer review.">
+      <h2><code>SKILL_DENIED</code> Skill denied by policy</h2>
+      <p>The project policy explicitly denies this skill.</p>
+      <p><strong>Fix:</strong> Remove the skill or update deniedSkills after maintainer review.</p>
+    </article>
+    <article class="rule" id="SKILL_ABSOLUTE_ENTRY_POINT" data-rule-card data-category="SKILL" data-rule-text="skill_absolute_entry_point absolute skill entry point a skill entrypoint uses an absolute path instead of a skill-local path. use a relative entrypoint such as scripts/run.js.">
+      <h2><code>SKILL_ABSOLUTE_ENTRY_POINT</code> Absolute skill entry point</h2>
+      <p>A skill entryPoint uses an absolute path instead of a skill-local path.</p>
+      <p><strong>Fix:</strong> Use a relative entryPoint such as scripts/run.js.</p>
+    </article>
+    <article class="rule" id="MCP_SHELL_COMMAND" data-rule-card data-category="MCP" data-rule-text="mcp_shell_command shell-based mcp command an mcp server is launched through a shell command, which can expand arguments and execute arbitrary shell code. use a direct executable command and restrict enabled_tools or disabled_tools.">
+      <h2><code>MCP_SHELL_COMMAND</code> Shell-based MCP command</h2>
+      <p>An MCP server is launched through a shell command, which can expand arguments and execute arbitrary shell code.</p>
+      <p><strong>Fix:</strong> Use a direct executable command and restrict enabled_tools or disabled_tools.</p>
+    </article>
+    <article class="rule" id="MCP_UNPINNED_NPX" data-rule-card data-category="MCP" data-rule-text="mcp_unpinned_npx unpinned npx package an npx-based mcp server does not pin a full package version, so ci can run different code over time. pin the package argument with a full version such as @scope/server@1.2.3.">
+      <h2><code>MCP_UNPINNED_NPX</code> Unpinned npx package</h2>
+      <p>An npx-based MCP server does not pin a full package version, so CI can run different code over time.</p>
+      <p><strong>Fix:</strong> Pin the package argument with a full version such as @scope/server@1.2.3.</p>
+    </article>
+    <article class="rule" id="MCP_TOOL_POLICY_MISSING" data-rule-card data-category="MCP" data-rule-text="mcp_tool_policy_missing missing mcp tool exposure policy the mcp server does not declare enabled_tools or disabled_tools, making the exposed tool surface unclear. declare enabled_tools for least privilege, or disabled_tools for explicit exclusions.">
+      <h2><code>MCP_TOOL_POLICY_MISSING</code> Missing MCP tool exposure policy</h2>
+      <p>The MCP server does not declare enabled_tools or disabled_tools, making the exposed tool surface unclear.</p>
+      <p><strong>Fix:</strong> Declare enabled_tools for least privilege, or disabled_tools for explicit exclusions.</p>
+    </article>
+    <article class="rule" id="MCP_CONFIG_PARSE_FAILED" data-rule-card data-category="MCP" data-rule-text="mcp_config_parse_failed mcp config parse failed a codex mcp config file could not be parsed. fix the toml/json syntax or remove the invalid mcp config file.">
+      <h2><code>MCP_CONFIG_PARSE_FAILED</code> MCP config parse failed</h2>
+      <p>A Codex MCP config file could not be parsed.</p>
+      <p><strong>Fix:</strong> Fix the TOML/JSON syntax or remove the invalid MCP config file.</p>
+    </article>
+    <article class="rule" id="MCP_SERVER_NOT_ALLOWED" data-rule-card data-category="MCP" data-rule-text="mcp_server_not_allowed mcp server not allowed by policy the project policy allows only specific mcp servers and this server is outside that list. add the server to allowedmcpservers or remove the server config.">
+      <h2><code>MCP_SERVER_NOT_ALLOWED</code> MCP server not allowed by policy</h2>
+      <p>The project policy allows only specific MCP servers and this server is outside that list.</p>
+      <p><strong>Fix:</strong> Add the server to allowedMcpServers or remove the server config.</p>
+    </article>
+    <article class="rule" id="MCP_SERVER_DENIED" data-rule-card data-category="MCP" data-rule-text="mcp_server_denied mcp server denied by policy the project policy explicitly denies this mcp server. remove the server or update deniedmcpservers after maintainer review.">
+      <h2><code>MCP_SERVER_DENIED</code> MCP server denied by policy</h2>
+      <p>The project policy explicitly denies this MCP server.</p>
+      <p><strong>Fix:</strong> Remove the server or update deniedMcpServers after maintainer review.</p>
+    </article>
+    <article class="rule" id="MCP_COMMAND_NOT_ALLOWED" data-rule-card data-category="MCP" data-rule-text="mcp_command_not_allowed mcp command not allowed by policy the mcp server command is outside the policy allow-list. use an allowed command wrapper or update allowedmcpcommands after review.">
+      <h2><code>MCP_COMMAND_NOT_ALLOWED</code> MCP command not allowed by policy</h2>
+      <p>The MCP server command is outside the policy allow-list.</p>
+      <p><strong>Fix:</strong> Use an allowed command wrapper or update allowedMcpCommands after review.</p>
+    </article>
+    <article class="rule" id="MCP_COMMAND_DENIED" data-rule-card data-category="MCP" data-rule-text="mcp_command_denied mcp command denied by policy the mcp server command is explicitly denied by project policy. replace the command or update deniedmcpcommands after maintainer review.">
+      <h2><code>MCP_COMMAND_DENIED</code> MCP command denied by policy</h2>
+      <p>The MCP server command is explicitly denied by project policy.</p>
+      <p><strong>Fix:</strong> Replace the command or update deniedMcpCommands after maintainer review.</p>
+    </article>
+    <article class="rule" id="MCP_BROAD_APPROVAL_MODE" data-rule-card data-category="MCP" data-rule-text="mcp_broad_approval_mode broad mcp approval mode the mcp server uses an always or never default tool approval mode. prefer prompt-based or per-tool approval unless the broad mode is intentional.">
+      <h2><code>MCP_BROAD_APPROVAL_MODE</code> Broad MCP approval mode</h2>
+      <p>The MCP server uses an always or never default tool approval mode.</p>
+      <p><strong>Fix:</strong> Prefer prompt-based or per-tool approval unless the broad mode is intentional.</p>
+    </article>
+    <article class="rule" id="MCP_INVALID_REMOTE_URL" data-rule-card data-category="MCP" data-rule-text="mcp_invalid_remote_url invalid remote mcp url a remote mcp server url is not a valid absolute url. use a valid url such as https://example.com/mcp.">
+      <h2><code>MCP_INVALID_REMOTE_URL</code> Invalid remote MCP URL</h2>
+      <p>A remote MCP server URL is not a valid absolute URL.</p>
+      <p><strong>Fix:</strong> Use a valid URL such as https://example.com/mcp.</p>
+    </article>
+    <article class="rule" id="MCP_REMOTE_NOT_HTTPS" data-rule-card data-category="MCP" data-rule-text="mcp_remote_not_https remote mcp server without https remote mcp traffic over non-https transports can expose requests or credentials. use an https endpoint or add a documented suppression for an intentional local-only exception.">
+      <h2><code>MCP_REMOTE_NOT_HTTPS</code> Remote MCP server without HTTPS</h2>
+      <p>Remote MCP traffic over non-HTTPS transports can expose requests or credentials.</p>
+      <p><strong>Fix:</strong> Use an HTTPS endpoint or add a documented suppression for an intentional local-only exception.</p>
+    </article>
+    <article class="rule" id="MCP_REMOTE_HOST_NOT_ALLOWED" data-rule-card data-category="MCP" data-rule-text="mcp_remote_host_not_allowed remote mcp host not allowed by policy the remote mcp endpoint host is outside the policy allow-list. use an approved host or add the host to allowedremotemcphosts after review.">
+      <h2><code>MCP_REMOTE_HOST_NOT_ALLOWED</code> Remote MCP host not allowed by policy</h2>
+      <p>The remote MCP endpoint host is outside the policy allow-list.</p>
+      <p><strong>Fix:</strong> Use an approved host or add the host to allowedRemoteMcpHosts after review.</p>
+    </article>
+    <article class="rule" id="MCP_REMOTE_HOST_DENIED" data-rule-card data-category="MCP" data-rule-text="mcp_remote_host_denied remote mcp host denied by policy the remote mcp endpoint host is explicitly denied by project policy. use a different endpoint or update deniedremotemcphosts after review.">
+      <h2><code>MCP_REMOTE_HOST_DENIED</code> Remote MCP host denied by policy</h2>
+      <p>The remote MCP endpoint host is explicitly denied by project policy.</p>
+      <p><strong>Fix:</strong> Use a different endpoint or update deniedRemoteMcpHosts after review.</p>
+    </article>
+    <article class="rule" id="MCP_REMOTE_AUTH_UNDOCUMENTED" data-rule-card data-category="MCP" data-rule-text="mcp_remote_auth_undocumented remote mcp auth is undocumented strict mode found a remote mcp server without bearer_token_env_var. set bearer_token_env_var or document why the endpoint does not require auth.">
+      <h2><code>MCP_REMOTE_AUTH_UNDOCUMENTED</code> Remote MCP auth is undocumented</h2>
+      <p>Strict mode found a remote MCP server without bearer_token_env_var.</p>
+      <p><strong>Fix:</strong> Set bearer_token_env_var or document why the endpoint does not require auth.</p>
+    </article>
+    <article class="rule" id="MCP_SECRET_LITERAL" data-rule-card data-category="MCP" data-rule-text="mcp_secret_literal potential secret literal a value in mcp env or headers looks like a committed token or credential. move the secret to an environment variable and commit only the variable name.">
+      <h2><code>MCP_SECRET_LITERAL</code> Potential secret literal</h2>
+      <p>A value in MCP env or headers looks like a committed token or credential.</p>
+      <p><strong>Fix:</strong> Move the secret to an environment variable and commit only the variable name.</p>
+    </article>
+    <article class="rule" id="MCP_REMOTE_URL_SECRET" data-rule-card data-category="MCP" data-rule-text="mcp_remote_url_secret credential-like mcp url query a remote mcp url appears to include a token, key, secret, or credential value. move remote mcp credentials to bearer_token_env_var or env_http_headers.">
+      <h2><code>MCP_REMOTE_URL_SECRET</code> Credential-like MCP URL query</h2>
+      <p>A remote MCP URL appears to include a token, key, secret, or credential value.</p>
+      <p><strong>Fix:</strong> Move remote MCP credentials to bearer_token_env_var or env_http_headers.</p>
+    </article>
+    <article class="rule" id="MCP_REMOTE_TOKEN_ENV_VAR_INVALID" data-rule-card data-category="MCP" data-rule-text="mcp_remote_token_env_var_invalid invalid mcp token environment variable name bearer_token_env_var should name an environment variable, not use shell-specific or literal value syntax. use a portable variable name such as mcp_token.">
+      <h2><code>MCP_REMOTE_TOKEN_ENV_VAR_INVALID</code> Invalid MCP token environment variable name</h2>
+      <p>bearer_token_env_var should name an environment variable, not use shell-specific or literal value syntax.</p>
+      <p><strong>Fix:</strong> Use a portable variable name such as MCP_TOKEN.</p>
+    </article>
+    <article class="rule" id="MCP_HEADER_ENV_VAR_INVALID" data-rule-card data-category="MCP" data-rule-text="mcp_header_env_var_invalid invalid mcp header environment variable name env_http_headers values should be environment variable names that resolve at runtime. use uppercase variable names such as mcp_auth_header.">
+      <h2><code>MCP_HEADER_ENV_VAR_INVALID</code> Invalid MCP header environment variable name</h2>
+      <p>env_http_headers values should be environment variable names that resolve at runtime.</p>
+      <p><strong>Fix:</strong> Use uppercase variable names such as MCP_AUTH_HEADER.</p>
+    </article>
+    <article class="rule" id="WORKFLOW_PERMISSIONS_MISSING" data-rule-card data-category="WORKFLOW" data-rule-text="workflow_permissions_missing missing explicit workflow permissions a github actions workflow does not explicitly declare github_token permissions. add least-privilege top-level or job-level permissions.">
+      <h2><code>WORKFLOW_PERMISSIONS_MISSING</code> Missing explicit workflow permissions</h2>
+      <p>A GitHub Actions workflow does not explicitly declare GITHUB_TOKEN permissions.</p>
+      <p><strong>Fix:</strong> Add least-privilege top-level or job-level permissions.</p>
+    </article>
+    <article class="rule" id="WORKFLOW_BROAD_PERMISSIONS" data-rule-card data-category="WORKFLOW" data-rule-text="workflow_broad_permissions broad workflow token permissions a workflow grants write-all or high-risk write permissions to github_token. scope write permissions to the smallest job and permission set required.">
+      <h2><code>WORKFLOW_BROAD_PERMISSIONS</code> Broad workflow token permissions</h2>
+      <p>A workflow grants write-all or high-risk write permissions to GITHUB_TOKEN.</p>
+      <p><strong>Fix:</strong> Scope write permissions to the smallest job and permission set required.</p>
+    </article>
+    <article class="rule" id="WORKFLOW_PULL_REQUEST_TARGET" data-rule-card data-category="WORKFLOW" data-rule-text="workflow_pull_request_target pull_request_target workflow pull_request_target runs with elevated repository context and can expose write tokens to unsafe logic. prefer pull_request or isolate untrusted checkout, input interpolation, and write operations.">
+      <h2><code>WORKFLOW_PULL_REQUEST_TARGET</code> pull_request_target workflow</h2>
+      <p>pull_request_target runs with elevated repository context and can expose write tokens to unsafe logic.</p>
+      <p><strong>Fix:</strong> Prefer pull_request or isolate untrusted checkout, input interpolation, and write operations.</p>
+    </article>
+    <article class="rule" id="WORKFLOW_UNPINNED_ACTION" data-rule-card data-category="WORKFLOW" data-rule-text="workflow_unpinned_action unpinned workflow action a workflow action reference uses a mutable tag or branch instead of a full commit sha. pin action references to audited 40-character commit shas.">
+      <h2><code>WORKFLOW_UNPINNED_ACTION</code> Unpinned workflow action</h2>
+      <p>A workflow action reference uses a mutable tag or branch instead of a full commit SHA.</p>
+      <p><strong>Fix:</strong> Pin action references to audited 40-character commit SHAs.</p>
+    </article>
+    <article class="rule" id="WORKFLOW_UNTRUSTED_PR_INPUT" data-rule-card data-category="WORKFLOW" data-rule-text="workflow_untrusted_pr_input untrusted pr input in shell script a pull request workflow interpolates pr event data directly into a run step. pass pr values through environment variables and quote shell references carefully.">
+      <h2><code>WORKFLOW_UNTRUSTED_PR_INPUT</code> Untrusted PR input in shell script</h2>
+      <p>A pull request workflow interpolates PR event data directly into a run step.</p>
+      <p><strong>Fix:</strong> Pass PR values through environment variables and quote shell references carefully.</p>
+    </article>
+    <article class="rule" id="WORKFLOW_DOWNLOAD_EXECUTE" data-rule-card data-category="WORKFLOW" data-rule-text="workflow_download_execute downloaded script execution a workflow pipes downloaded content into a shell. vendor the script, verify checksums, or use a pinned action.">
+      <h2><code>WORKFLOW_DOWNLOAD_EXECUTE</code> Downloaded script execution</h2>
+      <p>A workflow pipes downloaded content into a shell.</p>
+      <p><strong>Fix:</strong> Vendor the script, verify checksums, or use a pinned action.</p>
+    </article>
+    <article class="rule" id="SKILL_ENTRY_POINT_ESCAPE" data-rule-card data-category="SKILL" data-rule-text="skill_entry_point_escape skill entry point escapes its directory the configured entrypoint resolves outside the skill directory. use a relative path inside the skill folder and avoid .. path segments.">
+      <h2><code>SKILL_ENTRY_POINT_ESCAPE</code> Skill entry point escapes its directory</h2>
+      <p>The configured entryPoint resolves outside the skill directory.</p>
+      <p><strong>Fix:</strong> Use a relative path inside the skill folder and avoid .. path segments.</p>
+    </article>
+    <article class="rule" id="SKILL_ENTRY_POINT_MISSING" data-rule-card data-category="SKILL" data-rule-text="skill_entry_point_missing skill entry point file is missing a skill entrypoint references a file that was not found. create the entrypoint file or update the skill metadata to the correct path.">
+      <h2><code>SKILL_ENTRY_POINT_MISSING</code> Skill entry point file is missing</h2>
+      <p>A skill entryPoint references a file that was not found.</p>
+      <p><strong>Fix:</strong> Create the entryPoint file or update the skill metadata to the correct path.</p>
+    </article>
+    <article class="rule" id="SKILL_INSTRUCTION_ONLY" data-rule-card data-category="SKILL" data-rule-text="skill_instruction_only instruction-only skill strict mode found a skill without an executable entrypoint. add an entrypoint or suppress the warning with a documented reason.">
+      <h2><code>SKILL_INSTRUCTION_ONLY</code> Instruction-only skill</h2>
+      <p>Strict mode found a skill without an executable entryPoint.</p>
+      <p><strong>Fix:</strong> Add an entryPoint or suppress the warning with a documented reason.</p>
+    </article>
+    <article class="rule" id="SKILL_SECURITY_TAG_MISSING" data-rule-card data-category="SKILL" data-rule-text="skill_security_tag_missing security skill tag missing a skill triggered by security does not include a security tag. add the security tag so review and routing workflows can identify it.">
+      <h2><code>SKILL_SECURITY_TAG_MISSING</code> Security skill tag missing</h2>
+      <p>A skill triggered by security does not include a security tag.</p>
+      <p><strong>Fix:</strong> Add the security tag so review and routing workflows can identify it.</p>
+    </article>
+    <article class="rule" id="PLUGIN_MANIFEST_PARSE_FAILED" data-rule-card data-category="PLUGIN" data-rule-text="plugin_manifest_parse_failed plugin manifest parse failed a plugin manifest could not be parsed as valid json. fix .codex-plugin/plugin.json syntax and required fields.">
+      <h2><code>PLUGIN_MANIFEST_PARSE_FAILED</code> Plugin manifest parse failed</h2>
+      <p>A plugin manifest could not be parsed as valid JSON.</p>
+      <p><strong>Fix:</strong> Fix .codex-plugin/plugin.json syntax and required fields.</p>
+    </article>
+    <article class="rule" id="PLUGIN_NOT_ALLOWED" data-rule-card data-category="PLUGIN" data-rule-text="plugin_not_allowed plugin not allowed by policy the project policy allows only specific plugins and this plugin is outside that list. add the plugin to allowedplugins or remove the plugin manifest.">
+      <h2><code>PLUGIN_NOT_ALLOWED</code> Plugin not allowed by policy</h2>
+      <p>The project policy allows only specific plugins and this plugin is outside that list.</p>
+      <p><strong>Fix:</strong> Add the plugin to allowedPlugins or remove the plugin manifest.</p>
+    </article>
+    <article class="rule" id="PLUGIN_DENIED" data-rule-card data-category="PLUGIN" data-rule-text="plugin_denied plugin denied by policy the project policy explicitly denies this plugin. remove the plugin or update deniedplugins after maintainer review.">
+      <h2><code>PLUGIN_DENIED</code> Plugin denied by policy</h2>
+      <p>The project policy explicitly denies this plugin.</p>
+      <p><strong>Fix:</strong> Remove the plugin or update deniedPlugins after maintainer review.</p>
+    </article>
+    <article class="rule" id="PLUGIN_SKILL_PATH_REQUIRED" data-rule-card data-category="PLUGIN" data-rule-text="plugin_skill_path_required plugin skill path required policy requires plugin manifests to declare bundled skill paths. add skills paths to the plugin manifest or relax requirepluginskillpaths.">
+      <h2><code>PLUGIN_SKILL_PATH_REQUIRED</code> Plugin skill path required</h2>
+      <p>Policy requires plugin manifests to declare bundled skill paths.</p>
+      <p><strong>Fix:</strong> Add skills paths to the plugin manifest or relax requirePluginSkillPaths.</p>
+    </article>
+    <article class="rule" id="PLUGIN_SKILL_PATH_INVALID" data-rule-card data-category="PLUGIN" data-rule-text="plugin_skill_path_invalid plugin skill path is invalid a plugin manifest skill path is malformed or cannot be resolved. use a valid plugin-local path to a skill directory.">
+      <h2><code>PLUGIN_SKILL_PATH_INVALID</code> Plugin skill path is invalid</h2>
+      <p>A plugin manifest skill path is malformed or cannot be resolved.</p>
+      <p><strong>Fix:</strong> Use a valid plugin-local path to a skill directory.</p>
+    </article>
+    <article class="rule" id="PLUGIN_SKILL_PATH_ESCAPE" data-rule-card data-category="PLUGIN" data-rule-text="plugin_skill_path_escape plugin skill path escapes plugin root a plugin manifest references a skill path outside its own plugin directory. reference a plugin-local directory containing skill.md.">
+      <h2><code>PLUGIN_SKILL_PATH_ESCAPE</code> Plugin skill path escapes plugin root</h2>
+      <p>A plugin manifest references a skill path outside its own plugin directory.</p>
+      <p><strong>Fix:</strong> Reference a plugin-local directory containing SKILL.md.</p>
+    </article>
+    <article class="rule" id="PLUGIN_SKILL_NAME_MISMATCH" data-rule-card data-category="PLUGIN" data-rule-text="plugin_skill_name_mismatch plugin skill name mismatch a bundled skill name does not match the name declared by the plugin manifest. align the plugin manifest and skill.md metadata.">
+      <h2><code>PLUGIN_SKILL_NAME_MISMATCH</code> Plugin skill name mismatch</h2>
+      <p>A bundled skill name does not match the name declared by the plugin manifest.</p>
+      <p><strong>Fix:</strong> Align the plugin manifest and SKILL.md metadata.</p>
+    </article>
+    <article class="rule" id="PLUGIN_SKILLS_PATH_INVALID" data-rule-card data-category="PLUGIN" data-rule-text="plugin_skills_path_invalid plugin skills path is invalid a plugin manifest skills path is malformed or cannot be resolved. use valid plugin-local paths for bundled skills.">
+      <h2><code>PLUGIN_SKILLS_PATH_INVALID</code> Plugin skills path is invalid</h2>
+      <p>A plugin manifest skills path is malformed or cannot be resolved.</p>
+      <p><strong>Fix:</strong> Use valid plugin-local paths for bundled skills.</p>
+    </article>
+    <article class="rule" id="PLUGIN_SKILLS_PATH_ESCAPE" data-rule-card data-category="PLUGIN" data-rule-text="plugin_skills_path_escape plugin skills path escapes plugin root a plugin manifest skills path resolves outside the plugin directory. keep skills paths inside the plugin root.">
+      <h2><code>PLUGIN_SKILLS_PATH_ESCAPE</code> Plugin skills path escapes plugin root</h2>
+      <p>A plugin manifest skills path resolves outside the plugin directory.</p>
+      <p><strong>Fix:</strong> Keep skills paths inside the plugin root.</p>
+    </article>
+    <article class="rule" id="PLUGIN_MCP_PARSE_FAILED" data-rule-card data-category="PLUGIN" data-rule-text="plugin_mcp_parse_failed plugin mcp config parse failed a plugin-referenced mcp config could not be parsed. fix the mcp config syntax or remove the invalid reference.">
+      <h2><code>PLUGIN_MCP_PARSE_FAILED</code> Plugin MCP config parse failed</h2>
+      <p>A plugin-referenced MCP config could not be parsed.</p>
+      <p><strong>Fix:</strong> Fix the MCP config syntax or remove the invalid reference.</p>
+    </article>
+    <article class="rule" id="PLUGIN_MCP_PATH_MISSING" data-rule-card data-category="PLUGIN" data-rule-text="plugin_mcp_path_missing plugin mcp path is missing a plugin manifest references an mcp config file that does not exist. create the referenced mcp config or update the plugin manifest path.">
+      <h2><code>PLUGIN_MCP_PATH_MISSING</code> Plugin MCP path is missing</h2>
+      <p>A plugin manifest references an MCP config file that does not exist.</p>
+      <p><strong>Fix:</strong> Create the referenced MCP config or update the plugin manifest path.</p>
+    </article>
+    <article class="rule" id="PLUGIN_MCP_PATH_ESCAPE" data-rule-card data-category="PLUGIN" data-rule-text="plugin_mcp_path_escape plugin mcp path escapes plugin root a plugin manifest mcp config path resolves outside the plugin directory. keep mcp config paths inside the plugin root.">
+      <h2><code>PLUGIN_MCP_PATH_ESCAPE</code> Plugin MCP path escapes plugin root</h2>
+      <p>A plugin manifest MCP config path resolves outside the plugin directory.</p>
+      <p><strong>Fix:</strong> Keep MCP config paths inside the plugin root.</p>
+    </article>
+    <article class="rule" id="PLUGIN_MCP_NOT_DISCOVERED" data-rule-card data-category="PLUGIN" data-rule-text="plugin_mcp_not_discovered plugin mcp server not discovered a plugin manifest references an mcp server that was not found during discovery. fix the mcp server name, config path, or plugin manifest reference.">
+      <h2><code>PLUGIN_MCP_NOT_DISCOVERED</code> Plugin MCP server not discovered</h2>
+      <p>A plugin manifest references an MCP server that was not found during discovery.</p>
+      <p><strong>Fix:</strong> Fix the MCP server name, config path, or plugin manifest reference.</p>
+    </article>
+    <article class="rule" id="WORKFLOW_INVALID" data-rule-card data-category="WORKFLOW" data-rule-text="workflow_invalid workflow is invalid a github actions workflow did not match the expected workflow structure. fix the workflow yaml fields and rerun codex-skills doctor.">
+      <h2><code>WORKFLOW_INVALID</code> Workflow is invalid</h2>
+      <p>A GitHub Actions workflow did not match the expected workflow structure.</p>
+      <p><strong>Fix:</strong> Fix the workflow YAML fields and rerun codex-skills doctor.</p>
+    </article>
+    <article class="rule" id="WORKFLOW_PARSE_FAILED" data-rule-card data-category="WORKFLOW" data-rule-text="workflow_parse_failed workflow parse failed a github actions workflow could not be parsed as yaml. fix the workflow yaml syntax.">
+      <h2><code>WORKFLOW_PARSE_FAILED</code> Workflow parse failed</h2>
+      <p>A GitHub Actions workflow could not be parsed as YAML.</p>
+      <p><strong>Fix:</strong> Fix the workflow YAML syntax.</p>
+    </article>
+    <article class="rule" id="BASELINE_LOAD_FAILED" data-rule-card data-category="BASELINE" data-rule-text="baseline_load_failed baseline file could not be loaded the configured baseline file is missing, invalid json, or does not match the baseline schema. regenerate the baseline with codex-skills baseline or fix baselinefile.">
+      <h2><code>BASELINE_LOAD_FAILED</code> Baseline file could not be loaded</h2>
+      <p>The configured baseline file is missing, invalid JSON, or does not match the baseline schema.</p>
+      <p><strong>Fix:</strong> Regenerate the baseline with codex-skills baseline or fix baselineFile.</p>
+    </article>
+</section>
+<p class="empty-state" id="rules-empty" hidden>No matching rules.</p>
+<script>
+(() => {
+  const search = document.getElementById("rules-search");
+  const category = document.getElementById("rules-category");
+  const count = document.getElementById("rules-visible-count");
+  const empty = document.getElementById("rules-empty");
+  const cards = Array.from(document.querySelectorAll("[data-rule-card]"));
+  const update = () => {
+    const query = search.value.trim().toLowerCase();
+    const selectedCategory = category.value;
+    let visible = 0;
+    for (const card of cards) {
+      const matchesQuery = !query || card.dataset.ruleText.includes(query);
+      const matchesCategory = !selectedCategory || card.dataset.category === selectedCategory;
+      const show = matchesQuery && matchesCategory;
+      card.hidden = !show;
+      if (show) {
+        visible += 1;
+      }
+    }
+    count.textContent = String(visible);
+    empty.hidden = visible !== 0;
+  };
+  search.addEventListener("input", update);
+  category.addEventListener("change", update);
+  update();
+})();
+</script>
+  </main>
+</body>
+</html>
